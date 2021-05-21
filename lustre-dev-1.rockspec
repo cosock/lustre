@@ -10,5 +10,11 @@ description = {
 }
 build = {
    type = "builtin",
-   modules = {}
+   modules = {
+      ["lustre"] = "lustre/init.lua",
+      ["lustre.frame"] = "lustre/frame/init.lua",
+      ["lustre.frame.frame_header"] = "lustre/frame/frame_header.lua",
+      ["lustre.frame.opcode"] = "lustre/fame/opcode.lua",
+      ["lustre.frame.code_code"] = "lustre/frame/close_code.lua",
+   }
 }
