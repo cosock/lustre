@@ -1,6 +1,8 @@
 local utils = require 'spec.utils'
 local Frame = require 'lustre.frame'
 local FrameHeader = require 'lustre.frame.frame_header'
+local OpCode = require 'lustre.frame.opcode'
+local CloseCode = require 'lustre.frame.close'.CloseCode
 
 describe('Frame', function ()
     describe('apply_mask', function ()
@@ -35,5 +37,22 @@ describe('Frame', function ()
       local back = f:encode()
       utils.assert_eq(bytes, back)
       local f2 = assert(Frame.decode(back))
+
+      utils.assert_eq(f, f2)
+    end)
+    describe('constructors', function ()
+      it('ping', function ()
+        local f = Frame.ping('')
+        utils.assert_eq(f.header.opcode, OpCode.ping())
+      end)
+      it('pong', function ()
+        local f = Frame.pong('')
+        utils.assert_eq(f.header.opcode, OpCode.pong())
+      end)
+      it('close', function ()
+        local f = Frame.close(CloseCode.normal())
+        utils.assert_eq(f.header.opcode, OpCode.close())
+        utils.assert_eq(f.payload, CloseCode.normal():encode())
+      end)
     end)
 end)

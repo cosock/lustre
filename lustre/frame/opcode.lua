@@ -68,4 +68,36 @@ function OpCode:encode()
   return nil, 'Invalid opcode'
 end
 
+function OpCode.ping()
+  return OpCode.from('control', 'ping')
+end
+
+function OpCode.pong()
+  return OpCode.from('control', 'pong')
+end
+
+function OpCode.close()
+  return OpCode.from('control', 'close')
+end
+
+function OpCode.continue()
+  return OpCode.from('data', 'continue')
+end
+
+function OpCode.text()
+  return OpCode.from('data', 'text')
+end
+
+function OpCode.binary()
+  return OpCode.from('data', 'binary')
+end
+
+function OpCode.from(ty, sub, value)
+  return setmetatable({
+    type = ty,
+    sub = sub,
+    value = value,
+  }, OpCode)
+end
+
 return OpCode

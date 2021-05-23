@@ -202,7 +202,7 @@ function FrameHeader.default()
     rsv1 = false,
     rsv2 = false,
     rsv3 = false,
-    opcode = OpCode.decode(2),
+    opcode = OpCode.decode(8),
     length = 0,
     length_length = 0,
     masked = false,
@@ -243,7 +243,7 @@ function FrameHeader:set_rsv3(value)
   return self
 end
 
----Set the opcode for this header (default 2/data-binary)
+---Set the opcode for this header (default 8/control-close)
 ---@param value integer|OpCode
 ---@return FrameHeader
 function FrameHeader:set_opcode(value)

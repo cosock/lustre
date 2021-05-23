@@ -8,6 +8,12 @@ description = {
    homepage = "https://github.com/FreeMaseen/lustre",
    license = "MIT"
 }
+dependencies = {
+   "lua >= 5.3",
+   "sha >= 0.9",
+   "sha1 >= 0.6.0",
+   "base64 >= 1.5"
+}
 build = {
    type = "builtin",
    modules = {

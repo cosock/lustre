@@ -1,4 +1,7 @@
 local FrameHeader = require 'lustre.frame.frame_header'
+local OpCode = require 'lustre.frame.opcode'
+local CloseCode = require 'lustre.frame.close'.CloseCode
+local CloseFrame = require 'lustre.frame.close'.CloseFrame
 
 local Frame = {}
 Frame.__index = Frame
@@ -9,6 +12,33 @@ function Frame.decode(bytes)
     return nil, err
   end
   return Frame.from_parts(header, string.sub(bytes, header:len()+1))
+end
+
+function Frame.ping(payload)
+  return Frame.from_parts(
+    FrameHeader.default()
+      :set_opcode(OpCode.ping()),
+      payload or ''
+  )
+end
+
+function Frame.pong(payload)
+  return Frame.from_parts(
+    FrameHeader.default()
+      :set_opcode(OpCode.pong()),
+      payload or ''
+  )
+end
+
+function Frame.close(close_code, reason)
+  local payload = ''
+  if close_code then
+    payload = payload .. CloseFrame.from_parts(close_code, reason):encode()
+  end
+  return Frame.from_parts(
+    FrameHeader.default(),
+    payload
+  )
 end
 
 function Frame.from_parts(header, payload)
