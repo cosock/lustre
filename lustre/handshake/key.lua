@@ -1,6 +1,12 @@
-math.randomseed(os.time())
 local sha1 = require 'sha1'
 local base64 = require 'base64'
+
+local seeded = false
+local function seed_once()
+  if seeded then return end
+  seeded = true
+  math.randomseed(os.time())
+end
 
 local WEBSOCKET_SHA_UUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
 
@@ -13,6 +19,7 @@ end
 ---Generate a random Sec-WebSocket-Accept header value
 ---@return any
 local function generate_accept()
+  seed_once()
   local bytes = {}
   for _ = 1, 16 do
     table.insert(bytes, math.random(0,255))
