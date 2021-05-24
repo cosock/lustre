@@ -1,8 +1,8 @@
 package = "lustre"
-version = "dev-1"
+version = "dev-2"
 source = {
-   url = "https://github.com/FreeMasen/lustre",
-   tag = "dev-1"
+   url = "git://github.com/FreeMasen/lustre",
+   tag = "dev-2"
 }
 description = {
    homepage = "https://github.com/FreeMaseen/lustre",
@@ -10,9 +10,9 @@ description = {
 }
 dependencies = {
    "lua >= 5.3",
-   "sha >= 0.9",
    "sha1 >= 0.6.0",
-   "base64 >= 1.5"
+   "base64 >= 1.5",
+   "luncheon = 0",
 }
 build = {
    type = "builtin",

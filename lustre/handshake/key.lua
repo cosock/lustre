@@ -1,6 +1,5 @@
 local sha1 = require 'sha1'
 local base64 = require 'base64'
-
 local seeded = false
 local function seed_once()
   if seeded then return end
@@ -11,14 +10,14 @@ end
 local WEBSOCKET_SHA_UUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
 
 ---Use the Sec-WebSocket-Accept header value to create a
----the corresponding Sec-WebSocket-Key header value
-local function build_key_from(accept)
-  return base64.encode(sha1.binary(accept..WEBSOCKET_SHA_UUID))
+---the corresponding Sec-WebSocket-Accept header value
+local function build_accept_from(key)
+  return base64.encode(sha1.binary(key..WEBSOCKET_SHA_UUID))
 end
 
----Generate a random Sec-WebSocket-Accept header value
----@return any
-local function generate_accept()
+---Generate a random Sec-WebSocket-Key header value
+---@return string
+local function generate_key()
   seed_once()
   local bytes = {}
   for _ = 1, 16 do
@@ -28,6 +27,6 @@ local function generate_accept()
 end
 
 return {
-  build_key_from = build_key_from,
-  generate_accept = generate_accept,
+  build_accept_from = build_accept_from,
+  generate_key = generate_key,
 }
