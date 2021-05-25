@@ -82,7 +82,6 @@ local function decode_len(byte, bytes)
       end
       return u64, 8
   end
-  return nil, 0
 end
 
 ---Decode the mask bytes into a 4 byte array
@@ -155,8 +154,11 @@ function FrameHeader:payload_len()
 end
 
 ---Encode this header into a a string
----@return string
+---@return string|nil, string|nil
 function FrameHeader:encode()
+  if self.length == nil then
+    return nil, 'Invalid length'
+  end
   local bytes = {0, 0}
   if self.fin then
     bytes[1] = bytes[1] | 0x80
