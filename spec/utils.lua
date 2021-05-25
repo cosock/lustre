@@ -3,7 +3,6 @@ local function format_non_table(v)
     if v == nil then
         return 'nil'
     end
-    if type(v) == 'string' then return string.format('\'%q\'', v) end
     return string.format('%q', v)
 end
 ---Format a table as a pretty printed string
