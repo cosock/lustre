@@ -3,6 +3,8 @@
 ---@field private _max_frame_size number
 ---@field private _max_message_size number
 ---@field private _accept_unmasked_frames boolean
+---@field public extensions table[]
+---@field public protocols string[]
 local Config = {}
 Config.__index = Config
 
@@ -17,6 +19,8 @@ function Config.default()
         _max_frame_size = DEFAULT_MAX_FRAME,
         _max_message_size = DEFAULT_MAX_MESSAGE,
         _accept_unmasked_frames = false,
+        extensions = {},
+        protocols = {},
     }, Config)
 end
 
@@ -41,6 +45,19 @@ end
 ---@return Config
 function Config:max_frame_size(size)
     self._max_frame_size = size or DEFAULT_MAX_FRAME
+    return self
+end
+
+function Config:extension(name, params)
+    table.insert(self.extensions, {
+        name = name,
+        params = params,
+    })
+    return self
+end
+
+function Config:protocol(name)
+    table.insert(self.protocols, name)
     return self
 end
 

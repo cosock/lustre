@@ -1,5 +1,9 @@
 local key = require 'lustre.handshake.key'
 ---@class Handshake
+---@field protocols string[] List of requested protocols
+---@field extensions table[] List of requested extensions
+---@field key string|nil Signing key
+---@field accept string|nil Sec-WebSocket-Accept header value
 local Handshake = {}
 Handshake.__index = Handshake
 
