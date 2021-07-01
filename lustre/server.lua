@@ -1,5 +1,4 @@
 local Handshake = require 'lustre.handshake'
-local headers = require "headers"
 
 local ServerWebSocket = {}
 ServerWebSocket.__index = ServerWebSocket
@@ -20,7 +19,6 @@ function ServerWebSocket:accept(req, res)
   local should_accept = self.accept_callback(req, res)
   local hs = Handshake.server(req, res)
   assert(not res:has_sent(), 'Error, cannot send response data during accept')
-  
   if not should_accept then
     res:send('')
     return nil, 'error during accept'

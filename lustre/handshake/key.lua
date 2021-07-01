@@ -12,7 +12,7 @@ local WEBSOCKET_SHA_UUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
 ---Use the Sec-WebSocket-Accept header value to create a
 ---the corresponding Sec-WebSocket-Accept header value
 local function build_accept_from(key)
-  return base64.encode(sha1.binary(key..WEBSOCKET_SHA_UUID))
+  return base64.encode(sha1.binary(key .. WEBSOCKET_SHA_UUID))
 end
 
 ---Generate a random Sec-WebSocket-Key header value

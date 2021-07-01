@@ -21,13 +21,14 @@ end
 ---@return boolean
 function Handshake:validate_accept(req)
     local headers = req:get_headers()
-    if not headers.sec_websocket_accept then
+    local accept = headers:get_one('Sec-Websocket-Accept')
+    if not accept then
         return nil, 'Invalid request, no Sec-Websocket-Accept header'
     end
     if not self.accept then
         self.accept = key.build_accept_from(self.key)
     end
-    return self.accept == headers.sec_websocket_accept
+    return self.accept == accept
 end
 
 local function parse_protocols(s, dest)
@@ -81,55 +82,47 @@ function Handshake.server(req, res)
     if not headers then
         return nil, err
     end
-    if not headers.connection then
+    local connection = headers:get_one('Connection')
+    if not connection then
         return nil, 'Missing connection header'
     end
-    if not string.find(string.lower(headers.connection), 'upgrade') then
-        return nil, string.format('Invalid connection header %q', headers.connection)
+    if not string.find(string.lower(connection), 'upgrade') then
+        return nil, string.format('Invalid connection header %q', connection)
     end
-    if not headers.upgrade then
+    local upgrade = headers:get_one('Upgrade')
+    if not upgrade then
         return nil, 'Upgrade header not present'
     end
-    if not string.find(string.lower(headers.upgrade), '^websocket$') then
-        return nil, string.format('Upgrade header must contain `websocket` found %q', headers.upgrade)
+    if not string.find(string.lower(upgrade), '^websocket$') then
+        return nil, string.format('Upgrade header must contain `websocket` found %q', upgrade)
     end
-    if not headers.sec_websocket_version then
+    local swv = headers:get_one('Sec-Websocket-Version')
+    if not swv then
         return nil, 'Missing Sec-Websocket-Version header'
     end
-    if not string.find(headers.sec_websocket_version, '13') then
-        return nil, string.format('Unsupported websocket version %q', headers.sec_websocket_version)
+    if not string.find(swv, '13') then
+        return nil, string.format('Unsupported websocket version %q', swv)
     end
-    if not headers.sec_websocket_key then
+    local sw_key = headers:get_one('Sec-Websocket-Key')
+    if not sw_key then
         return nil, 'No Sec-Websocket-Key header present'
     end
-    local accept = key.build_accept_from(headers.sec_websocket_key)
+    local accept = key.build_accept_from(sw_key)
     res:status(101)
-    res.headers:append('Upgrade', 'websocket')
-    res.headers:append('Connection', 'Upgrade')
-    res.headers:append('Sec-Websocket-Accept', accept)
+    res:add_header('Upgrade', 'websocket')
+    res:add_header('Connection', 'Upgrade')
+    res:add_header('Sec-Websocket-Accept', accept)
     local ret = {
         protocols = {},
         extensions = {},
     }
-    if headers.sec_websocket_protocol then
-        local ty = type(headers.sec_websocket_protocol)
-        if ty == 'string' then
-            parse_protocols(headers.sec_websocket_protocol, ret.protocols)
-        elseif ty == 'table' then
-            for _, part in ipairs(headers.sec_websocket_protocol) do
-                parse_protocols(part, ret.protocols)
-            end
-        end
+    local protocols = headers:get_one('sec_websocket_protocol')
+    if protocols then
+        parse_protocols(protocols, ret.protocols)
     end
-    if headers.sec_websocket_extensions then
-        local ty = type(headers.sec_websocket_extensions)
-        if ty == 'string' then
-            parse_extensions(headers.sec_websocket_extensions, ret.extensions)
-        elseif ty == 'table' then
-            for _, part in ipairs(headers.sec_websocket_extensions) do
-                parse_extensions(part, ret.extensions)
-            end
-        end
+    local extensions = headers:get_one('sec_websocket_extensions')
+    if extensions then
+        parse_extensions(extensions, ret.extensions)
     end
     return setmetatable(ret, Handshake)
 end
