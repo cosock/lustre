@@ -4,3 +4,4 @@
 /.luarocks
 *.out
 /lua_modules
+.vsls.json
