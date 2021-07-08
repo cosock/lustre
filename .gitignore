@@ -1,6 +1,6 @@
 /luarocks
 /lua
-/lua_modules
+
 /.luarocks
 *.out
-
+/lua_modules

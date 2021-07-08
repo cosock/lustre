@@ -108,7 +108,7 @@ function Handshake.server(req, res)
         return nil, 'No Sec-Websocket-Key header present'
     end
     local accept = key.build_accept_from(sw_key)
-    res:status(101)
+    res.status = 101
     res:add_header('Upgrade', 'websocket')
     res:add_header('Connection', 'Upgrade')
     res:add_header('Sec-Websocket-Accept', accept)
@@ -116,13 +116,13 @@ function Handshake.server(req, res)
         protocols = {},
         extensions = {},
     }
-    local protocols = headers:get_one('sec_websocket_protocol')
-    if protocols then
-        parse_protocols(protocols, ret.protocols)
+    local protocols = headers:get_all('sec_websocket_protocol')
+    for _, protocol in ipairs(protocols or {}) do
+        parse_protocols(protocol, ret.protocols)
     end
-    local extensions = headers:get_one('sec_websocket_extensions')
-    if extensions then
-        parse_extensions(extensions, ret.extensions)
+    local extensions = headers:get_all('sec_websocket_extensions')
+    for _, extension in ipairs(extensions or {}) do
+        parse_extensions(extension, ret.extensions)
     end
     return setmetatable(ret, Handshake)
 end
