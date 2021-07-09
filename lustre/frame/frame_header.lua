@@ -84,6 +84,30 @@ local function decode_len(byte, bytes)
   end
 end
 
+local function decode_len_stream(byte, socket)
+  local len_byte = byte & 0x7f
+  if len_byte < 126 then
+      return len_byte
+  end
+  local extra_bytes = {}
+  if len_byte == 126 then
+    local next_2_bytes = assert(socket:receive(2))
+    extra_bytes = table.pack(string.byte(next_2_bytes, 1, 2))
+    assert(#extra_bytes >= 2, 'Too few length bytes')
+    return (extra_bytes[1] << 8) | extra_bytes[2]
+  elseif len_byte == 127 then
+      local bytes = assert(socket:receive(8))
+      extra_bytes = table.pack(string.byte(bytes, 1, 8))
+      assert(#extra_bytes >= 8)
+      local u64 = decode_uint(extra_bytes)
+      --Most significant bit means we found an invalid value, return nil
+      if u64 < 0 then
+        return nil
+      end
+      return u64
+  end
+end
+
 ---Decode the mask bytes into a 4 byte array
 ---@param bytes string
 ---@return integer[]|nil
@@ -94,6 +118,16 @@ local function decode_mask(bytes)
   end
   return mask
 end
+
+local function decode_mask_stream(socket)
+  local bytes = assert(socket:receive(4))
+  local mask = table.pack(string.byte(bytes, 1, 4))
+  if #mask < 4 then
+      return
+  end
+  return mask
+end
+
 
 ---Decode the header in total
 ---@param bytes string The byte string to decode (should be at least 2 bytes long)
@@ -126,6 +160,41 @@ local function decode_header(bytes)
       mask_length = (mask and 4) or 0,
       mask = mask,
   }
+end
+
+local function decode_header_stream(socket)
+  local bytes = assert(socket:receive(2))
+  local first_byte, second_byte = string.byte(bytes, 1, 2)
+  local fin = first_byte & 0x80 ~= 0
+  local rsv1 = first_byte & 0x40 ~= 0
+  local rsv2 = first_byte & 0x20 ~= 0
+  local rsv3 = first_byte & 0x10 ~= 0
+  local opcode = OpCode.decode(first_byte & 0x0f)
+  local masked = (second_byte & 0x80) ~= 0
+  local length = decode_len_stream(second_byte, socket)
+  local mask
+  if masked then
+      mask = decode_mask_stream(socket)
+  end
+  return {
+      fin = fin,
+      rsv1 = rsv1,
+      rsv2 = rsv2,
+      rsv3 = rsv3,
+      opcode = opcode,
+      masked = masked,
+      length = length,
+      mask_length = (mask and 4) or 0,
+      mask = mask,
+  }
+end
+
+function FrameHeader.from_stream(socket)
+  local s, t = pcall(decode_header_stream, socket)
+  if not s then
+    return nil, t
+  end
+  return setmetatable(t, FrameHeader)
 end
 
 ---Decode a string into a FrameHeader

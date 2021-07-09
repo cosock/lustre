@@ -6,6 +6,18 @@ local CloseFrame = require 'lustre.frame.close'.CloseFrame
 local Frame = {}
 Frame.__index = Frame
 
+function Frame.from_stream(socket)
+  local header, err = FrameHeader.from_stream(socket)
+  if not header then
+    return nil, err
+  end
+  local payload, err = socket:receive(header.length) --num bytes
+  if not payload then
+    return nil, err
+  end
+  return Frame.from_parts(header, payload)
+end
+
 function Frame.decode(bytes)
   local header, err = FrameHeader.decode(bytes)
   if not header then
@@ -60,6 +72,10 @@ end
 ---@return any
 function Frame:is_masked()
   return self.header.masked
+end
+
+function Frame:is_final()
+  return self.header.fin
 end
 
 ---Get the mask array for this Frame
