@@ -1,51 +1,31 @@
 local key = require 'lustre.handshake.key'
 local Handshake = require 'lustre.handshake'
 local utils = require "spec.utils"
+local Request = require "luncheon.request"
+local Response = require "luncheon.response"
 
-local function mock_request(headers, method, http_version)
-    return {
-        get_headers = function() return {
-            get_one = function(_, name) 
-                local lower = string.lower(name)
-                local normalized = string.gsub(lower, '-', '_')            
-                local header = headers[normalized]
-                if type(header) == 'table' then
-                    return header[#header]
-                end
-                return headers[normalized]
-            end,
-            get_all = function(_, name) 
-                local lower = string.lower(name)
-                local normalized = string.gsub(lower, '-', '_')            
-                local header = headers[normalized]
-                if type(header) == 'string' then
-                    return { header }
-                end
-                return headers[normalized]
-            end,
-        } end,
-        method = method or 'GET',
-        http_version = http_version or '1.1',
-    }
+local function fill_headers(headers, t)
+    for key, value in pairs(headers) do
+        if type(value) == 'table' then
+            for _, value in ipairs(value) do
+                t:add_header(key, value)
+            end
+        else
+            t:add_header(key, value)
+        end
+    end
+end
+
+local function mock_request(headers, method)
+    local req = Request.new(method, '/')
+    fill_headers(headers, req)
+    return req
 end
 
 local function mock_response(headers, status)
-    return {
-        get_headers = function() return {
-            get_one = function(_, name) 
-                local lower = string.lower(name)
-                local normalized = string.gsub(lower, '-', '_')            
-                return headers[normalized]
-            end
-        } end,
-        status = status or 200,
-        add_header = function(_, key, value)
-            local lower = string.lower(key)
-            local normalized = string.gsub(lower, '-', '_')            
-            headers[normalized] = value
-        end,
-        has_sent = function() return false end,
-    }
+    local res = Response.new(status)
+    fill_headers(headers, res)
+    return res
 end
 
 describe('handshake', function ()
