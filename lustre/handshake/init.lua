@@ -1,4 +1,4 @@
-local key = require 'lustre.handshake.key'
+local Key = require 'lustre.handshake.key'
 ---@class Handshake
 ---@field protocols string[] List of requested protocols
 ---@field extensions table[] List of requested extensions
@@ -7,26 +7,26 @@ local key = require 'lustre.handshake.key'
 local Handshake = {}
 Handshake.__index = Handshake
 
-function Handshake.client(protocols, extensions)
+function Handshake.client(key, protocols, extensions)
     return setmetatable({
         protocols = protocols or {},
         extensions = extensions or {},
-        key = key.generate_key(),
+        key = key,
     }, Handshake)
 end
 
 ---Validate the accept header returned by the
 ---the server
----@param req Request
+---@param res Response
 ---@return boolean
-function Handshake:validate_accept(req)
-    local headers = req:get_headers()
+function Handshake:validate_accept(res)
+    local headers = res:get_headers()
     local accept = headers:get_one('Sec-Websocket-Accept')
     if not accept then
         return nil, 'Invalid request, no Sec-Websocket-Accept header'
     end
     if not self.accept then
-        self.accept = key.build_accept_from(self.key)
+        self.accept = Key.build_accept_from(self.key)
     end
     return self.accept == accept
 end
@@ -107,7 +107,7 @@ function Handshake.server(req, res)
     if not sw_key then
         return nil, 'No Sec-Websocket-Key header present'
     end
-    local accept = key.build_accept_from(sw_key)
+    local accept = Key.build_accept_from(sw_key)
     res.status = 101
     res:add_header('Upgrade', 'websocket')
     res:add_header('Connection', 'Upgrade')
