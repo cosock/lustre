@@ -35,13 +35,18 @@ function WebSocketClient:handshake()
     return 1
 end
 
-function WebSocketClient:send_text()
+function WebSocketClient:send_text(payload)
+    
 end
 
-function WebSocketClient:send_bytes()
+function WebSocketClient:send_bytes(payload)
+    
 end
 
-function WebSocketClient:close()
+function WebSocketClient:close(close_code)
+    local close_frame = Frame.close(close_code)
+    self.socket:send(close_frame.encode())
+    self._close_frame_sent = true
 end
 
 function WebSocketClient:register_message_callback(cb)
@@ -57,19 +62,39 @@ function WebSocketClient:register_close_callback(cb)
 end
 
 function WebSocketClient:start_receive_loop()
-    local partial_msgs = {}
+    local partial_frames = {}
     while true do
         local frame, err = Frame.from_stream(self.socket)
         if not frame then
             self.error_callback(err)
         end
-        if not frame:is_final() then
-            table.insert(partial_msgs, frame)
+        if frame:is_control() then
+            local control_type = frame.header.opcode.sub
+            if control_type == 'ping' then
+                self.socket:send(Frame.pong(frame.payload):encode())
+            elseif control_type == 'close' then
+                if not self._close_frame_sent then
+                    self:close(CloseCode.from_int(payload))
+                else
+                    self.socket:close()
+                    return --TODO what conditions end this loop?
+                end
+            end
             goto continue
         end
-        if next(partial_msgs) then
-            --todo concat payloads
+        if not frame:is_final() then
+            table.insert(partial_frames, frame)
+            goto continue
         end
+        local full_payload = frame.payload
+        if next(partial_frames) then
+            local full_payload = frame.payload
+            for _, partial in ipairs(partial_frames) do
+                full_payload  = full_payload .. partial.payload
+            end
+        end
+        self.message_callback(full_payload)
+
         ::continue::
     end
 end

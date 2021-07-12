@@ -78,6 +78,10 @@ function Frame:is_final()
   return self.header.fin
 end
 
+function Frame:is_control()
+  return self.header.opcode.type == 'control'
+end
+
 ---Get the mask array for this Frame
 ---@return number[]|nil @ 4 byte array
 function Frame:mask()
