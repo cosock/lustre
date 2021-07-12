@@ -7,11 +7,11 @@ local Key = require 'lustre.handshake.key'
 local Handshake = {}
 Handshake.__index = Handshake
 
-function Handshake.client(key, protocols, extensions)
+function Handshake.client(protocols, extensions)
     return setmetatable({
         protocols = protocols or {},
         extensions = extensions or {},
-        key = key,
+        key = Key.generate_key(),
     }, Handshake)
 end
 

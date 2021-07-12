@@ -1,4 +1,4 @@
-local key = require 'lustre.handshake.key'
+local Key = require 'lustre.handshake.key'
 local Handshake = require 'lustre.handshake'
 local utils = require "spec.utils"
 local Request = require "luncheon.request"
@@ -30,7 +30,7 @@ end
 
 describe('handshake', function ()
     it('build_key_from', function ()
-        local key = key.build_accept_from('dGhlIHNhbXBsZSBub25jZQ==');
+        local key = Key.build_accept_from('dGhlIHNhbXBsZSBub25jZQ==');
         utils.assert_eq(key, 's3pPLMBiTxaQ9kYGzzhZRbK+xOo=')
     end)
     describe('server', function ()
@@ -359,6 +359,7 @@ describe('handshake', function ()
     end)
     describe('client', function ()
         it('constructs with no protocols, not encodings', function ()
+
             local h = Handshake.client()
             utils.assert_eq(#h.protocols, 0)
             utils.assert_eq(#h.extensions, 0)
@@ -385,7 +386,7 @@ describe('handshake', function ()
         it('validates accept', function ()
             local h = Handshake.client()
             local headers = {
-                sec_websocket_accept = key.build_accept_from(h.key)
+                sec_websocket_accept = Key.build_accept_from(h.key)
             }
             local req = mock_request(headers)
             spy(req.get_headers)
