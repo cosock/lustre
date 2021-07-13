@@ -1,21 +1,21 @@
 local Handshake = require 'lustre.handshake'
 
-local ServerWebSocket = {}
-ServerWebSocket.__index = ServerWebSocket
+local WebSocketServer = {}
+WebSocketServer.__index = WebSocketServer
 
-function ServerWebSocket.new(config)
+function WebSocketServer.new(config)
   return setmetatable({
     config = config,
     accept_callback = function() return true end
-  }, ServerWebSocket)
+  }, WebSocketServer)
 end
 
-function ServerWebSocket:set_accept_callback(cb)
+function WebSocketServer:set_accept_callback(cb)
   self.accept_callback = cb
   return self
 end
 
-function ServerWebSocket:accept(req, res)
+function WebSocketServer:accept(req, res)
   local should_accept = self.accept_callback(req, res)
   local hs = Handshake.server(req, res)
   assert(not res:has_sent(), 'Error, cannot send response data during accept')
@@ -25,4 +25,5 @@ function ServerWebSocket:accept(req, res)
   end
 end
 
-return ServerWebSocket
+--TODO is there any more api calls, perhaps `send_text` and `send_bytes`
+return WebSocketServer
