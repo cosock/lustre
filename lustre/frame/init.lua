@@ -15,7 +15,11 @@ function Frame.from_stream(socket)
   if not payload then
     return nil, err
   end
-  return Frame.from_parts(header, payload)
+  local ret = Frame.from_parts(header, payload)
+  if ret:is_masked() then
+    ret:_apply_mask()
+  end
+  return ret
 end
 
 function Frame.decode(bytes)
@@ -57,6 +61,7 @@ function Frame.from_parts(header, payload)
   return setmetatable({
     header = header,
     payload = payload,
+    _applied_mask = false,
   }, Frame)
 end
 
@@ -88,12 +93,21 @@ function Frame:mask()
   return self.header.mask
 end
 
+function Frame:set_mask(mask)
+  mask = mask or generate_mask()
+  self.header:set_mask(mask)
+  return self
+end
+
 ---Apply the mask array from the header, for outbound
 ---client messages, this will mask the payload, for inbound
 ---client messages, this will unmask the payload.
 ---
 ---note: this applies the mask in place
-function Frame:apply_mask()
+function Frame:_apply_mask()
+  if self._applied_mask then
+    return
+  end
   if not self.header.mask then
     return nil, 'No mask to apply'
   end
@@ -104,9 +118,13 @@ function Frame:apply_mask()
     unmasked = unmasked .. string.char(char)
   end
   self.payload = unmasked
+  self._applied_mask = true
 end
 
 function Frame:encode()
+  if self:is_masked() then
+    self:_apply_mask()
+  end
   return self.header:encode() .. self.payload
 end
 
