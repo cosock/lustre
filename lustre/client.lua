@@ -1,22 +1,32 @@
+local cosock = require 'cosock'
 local Request = require "luncheon.request"
 local Response = require "luncheon.response"
 local Handshake = require 'lustre.handshake'
 local Key = require 'lustre.handshake.key'
 local Config = require 'lustre.config'
+local Frame = require 'lustre.frame'
+local CloseCode = require 'lustre.frame.close'
 
 ---@class WebSocketClient
 ---
 ---@field url string the endpoint to hit
 ---@field socket table lua socket
+---@field handshake_key string key used in the websocket handshake
+---@field config Config
+---@field _tx table
+---@field _rx table
 local WebSocketClient = {}
 WebSocketClient.__index = WebSocketClient
 
 function WebSocketClient.new(socket, url, config)
+    local _tx, _rx = cosock.channel.new()
     return setmetatable({
         socket = socket,
         url = url or '/',
         handshake_key = Key.generate_key(),
         config = config or Config.default(),
+        _tx = _tx,
+        _rx = _rx,
     }, WebSocketClient)
 end
 
@@ -36,7 +46,8 @@ function WebSocketClient:handshake()
 end
 
 function WebSocketClient:send_text(payload)
-    
+    --self._tx:send(...)
+    -- need to define message structure: type, data, protocol/extension
 end
 
 function WebSocketClient:send_bytes(payload)
@@ -44,8 +55,8 @@ function WebSocketClient:send_bytes(payload)
 end
 
 function WebSocketClient:close(close_code)
-    local close_frame = Frame.close(close_code)
-    self.socket:send(close_frame.encode())
+    local close_frame = Frame.close(close_code):set_mask()
+    self.socket:send(close_frame:encode())
     self._close_frame_sent = true
 end
 
@@ -63,37 +74,58 @@ end
 
 function WebSocketClient:start_receive_loop()
     local partial_frames = {}
+    local frames_since_last_ping = 0
+    local pending_pong = false
     while true do
-        local frame, err = Frame.from_stream(self.socket)
-        if not frame then
-            self.error_callback(err)
+        local recv, _, err = cosock.select({self.socket, self._rx}, nil, self.config._keep_alive)
+        if not recv then
+            if err == "timeout" then
+                self.socket:send(Frame.ping():set_mask():encode())
+                pending_pong = true
+            end
+            goto continue
         end
-        if frame:is_control() then
-            local control_type = frame.header.opcode.sub
-            if control_type == 'ping' then
-                self.socket:send(Frame.pong(frame.payload):encode())
-            elseif control_type == 'close' then
-                if not self._close_frame_sent then
-                    self:close(CloseCode.from_int(payload))
-                else
+        if recv[1] == self.socket then
+            local frame, err = Frame.from_stream(self.socket)
+            if not frame then
+                self.error_callback(err)
+            end
+            if frame:is_control() then
+                local control_type = frame.header.opcode.sub
+                if control_type == 'ping' then
+                    self.socket:send(Frame.pong(frame.payload):set_mask():encode())
+                elseif control_type == 'pong' then
+                    pending_pong = false
+                    frames_since_last_ping = 0
+                elseif control_type == 'close' then
+                    if not self._close_frame_sent then
+                        self:close(CloseCode.decode(frame.payload))
+                    end
                     self.socket:close()
-                    return --TODO what conditions end this loop?
+                    return
                 end
+                goto continue
             end
-            goto continue
-        end
-        if not frame:is_final() then
-            table.insert(partial_frames, frame)
-            goto continue
-        end
-        local full_payload = frame.payload
-        if next(partial_frames) then
+            if pending_pong then
+                --tODO probably need to close or err if we dont get pong after ping
+                -- check spec
+                frames_since_last_ping = frames_since_last_ping + 1
+            end
+            if not frame:is_final() then
+                table.insert(partial_frames, frame.payload)
+                goto continue
+            end
             local full_payload = frame.payload
-            for _, partial in ipairs(partial_frames) do
-                full_payload  = full_payload .. partial.payload
+            if next(partial_frames) then
+                table.insert(partial_frames, frame.payload)
+                full_payload = table.concat(partial_frames)
+                partial_frames = {}
             end
+            self.message_callback(full_payload)
+        elseif recv[1] == self._rx then
+            self._rx:recieve()
+            --todo
         end
-        self.message_callback(full_payload)
 
         ::continue::
     end
