@@ -5,6 +5,7 @@
 ---@field private _accept_unmasked_frames boolean
 ---@field public extensions table[]
 ---@field public protocols string[]
+---@field private _keep_alive number|nil
 local Config = {}
 Config.__index = Config
 
@@ -21,6 +22,7 @@ function Config.default()
         _accept_unmasked_frames = false,
         extensions = {},
         protocols = {},
+        _keep_alive = nil,
     }, Config)
 end
 
@@ -60,5 +62,11 @@ function Config:protocol(name)
     table.insert(self.protocols, name)
     return self
 end
+
+function Config:keep_alive(timeout)
+    self._keep_alive = timeout
+    return self
+end
+
 
 return Config
