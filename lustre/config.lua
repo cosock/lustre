@@ -11,6 +11,7 @@ Config.__index = Config
 
 local DEFAULT_MAX_FRAME = 16 * 1024 * 1024
 local DEFAULT_MAX_MESSAGE = 64 * 1024 * 1024
+local DEFAULT_MAX_FRAMES_WITHOUT_PONG = 4
 
 ---Construct a default configurations
 ---@return Config
@@ -19,6 +20,7 @@ function Config.default()
         _max_queue_size = nil,
         _max_frame_size = DEFAULT_MAX_FRAME,
         _max_message_size = DEFAULT_MAX_MESSAGE,
+        _max_frames_without_pong = DEFAULT_MAX_FRAMES_WITHOUT_PONG,
         _accept_unmasked_frames = false,
         extensions = {},
         protocols = {},
@@ -47,6 +49,14 @@ end
 ---@return Config
 function Config:max_frame_size(size)
     self._max_frame_size = size or DEFAULT_MAX_FRAME
+    return self
+end
+
+---Set the max frames that can be received while waiting for a pong (Default 4)
+---@param size number|nil
+---@return Config
+function Config:max_frames_without_pong(size)
+    self._max_frames_without_pong = size or DEFAULT_MAX_FRAMES_WITHOUT_PONG
     return self
 end
 

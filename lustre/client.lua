@@ -54,8 +54,8 @@ function WebSocketClient:send_bytes(payload)
     
 end
 
-function WebSocketClient:close(close_code)
-    local close_frame = Frame.close(close_code):set_mask()
+function WebSocketClient:close(close_code, reason)
+    local close_frame = Frame.close(close_code, reason):set_mask()
     self.socket:send(close_frame:encode())
     self._close_frame_sent = true
 end
@@ -107,9 +107,11 @@ function WebSocketClient:start_receive_loop()
                 goto continue
             end
             if pending_pong then
-                --tODO probably need to close or err if we dont get pong after ping
-                -- check spec
                 frames_since_last_ping = frames_since_last_ping + 1
+                if frames_since_last_ping > self.config._max_frames_without_pong then
+                    frames_since_last_ping = 0
+                    self:close(CloseCode.policy(), "no pong after ping")
+                end
             end
             if not frame:is_final() then
                 table.insert(partial_frames, frame.payload)
