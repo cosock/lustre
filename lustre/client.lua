@@ -60,7 +60,8 @@ function WebSocketClient:send(message, ...)
     local frames_sent = 0
     while data_idx <= message.data.len() do
         local header = FrameHeader.default()
-        if (message.data.len() - data_idx - 1) > self.config._max_frame_size then
+        local payload = ""
+        if (message.data.len() - data_idx + 1) > self.config._max_frame_size then
             header.set_fin(false)
         else
 
