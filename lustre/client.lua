@@ -30,6 +30,10 @@ function WebSocketClient.new(socket, url, config)
     }, WebSocketClient)
 end
 
+-- todo can this api be used by both client and server?
+--  need to modify to use Handshake.server() as well.
+-- Also, I think this could be private and then get encapsulated within the open
+-- api. 
 function WebSocketClient:handshake()
     local req = Request.new('GET', self.url, self.socket)
     req:add_header('Connection', 'upgrade')
@@ -45,13 +49,41 @@ function WebSocketClient:handshake()
     return 1
 end
 
-function WebSocketClient:send_text(payload)
+function WebSocketClient:send(message, ...)
     --self._tx:send(...)
     -- need to define message structure: type, data, protocol/extension
+    --
+    -- why are we not calling?
+    --  self.socket:send(Frame)
+
+    local data_idx = 1
+    local frames_sent = 0
+    while data_idx <= message.data.len() do
+        local header = FrameHeader.default()
+        if (message.data.len() - data_idx - 1) > self.config._max_frame_size then
+            header.set_fin(false)
+        else
+
+        end
+        if message.type == 'bytes' then
+            header:set_opcode(OpCode.binary())
+        else
+            header:set_opcode(OpCode.text())
+        end
+        --todo set mask too?
+        local frame = Frame.from_parts(
+            header,
+            string.sub(message.data, data_idx, data_idx + self.config._max_frame_size)
+        )
+        local bytes, err = self.socket:send(frame:encode()) --todo do we get num bytes sent returned?
+        data_idx = data_idx + bytes
+        frames_sent = frames_sent + 1
+    end
+    print("sent "..frames_sent.." frames.")
 end
 
-function WebSocketClient:send_bytes(payload)
-    
+function WebSocketClient:open(...)
+
 end
 
 function WebSocketClient:close(close_code, reason)
@@ -60,16 +92,23 @@ function WebSocketClient:close(close_code, reason)
     self._close_frame_sent = true
 end
 
-function WebSocketClient:register_message_callback(cb)
-    self.message_callback = cb
+---@param cb function
+function WebSocketClient:register_message_cb(cb)
+    if type(cb) == 'function' then
+        self.message_cb = cb
+    end
 end
-
-function WebSocketClient:register_error_callback(cb)
-    self.error_callback = cb
+---@param cb function
+function WebSocketClient:register_error_cb(cb)
+    if type(cb) == 'function' then
+        self.error_cb = cb
+    end
 end
-
-function WebSocketClient:register_close_callback(cb)
-    self.close_callback = cb
+---@param cb function
+function WebSocketClient:register_close_cb(cb)
+    if type(cb) == 'function' then
+        self.close_cb = cb
+    end
 end
 
 function WebSocketClient:start_receive_loop()
@@ -88,7 +127,7 @@ function WebSocketClient:start_receive_loop()
         if recv[1] == self.socket then
             local frame, err = Frame.from_stream(self.socket)
             if not frame then
-                self.error_callback(err)
+                self.error_cb(err)
             end
             if frame:is_control() then
                 local control_type = frame.header.opcode.sub
@@ -123,9 +162,10 @@ function WebSocketClient:start_receive_loop()
                 full_payload = table.concat(partial_frames)
                 partial_frames = {}
             end
-            self.message_callback(full_payload)
+            --todo encapsulate in a message object
+            self.message_cb(full_payload)
         elseif recv[1] == self._rx then
-            self._rx:recieve()
+            self._rx:recieve() 
             --todo
         end
 
