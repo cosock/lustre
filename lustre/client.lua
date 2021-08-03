@@ -55,7 +55,7 @@ function WebSocketClient:send(message, ...)
     --
     -- why are we not calling?
     --  self.socket:send(Frame)
-
+    print("!!!!!! 1")
     local data_idx = 1
     local frames_sent = 0
     while data_idx <= message.data.len() do

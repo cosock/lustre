@@ -7,6 +7,8 @@
 local Message = {}
 Message.__index = Message
 
+Message.BYTES = 'bytes'
+Message.TEXT = 'text'
 
 ---@param type string ['bytes'|'text']
 ---@param data string

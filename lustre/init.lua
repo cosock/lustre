@@ -99,6 +99,6 @@ return {
   Frame = Frame,
   Handshake = Handshake,
   Opcode = Opcode,
-  WebSocket = WebSocket,
+  WebSocketClient = WebSocketClient,
   Message = Message,
 }

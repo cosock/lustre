@@ -1,7 +1,26 @@
 local utils = require "spec.utils"
 local WebSocketClient = require "lustre.client"
+local MockSocket = require "spec.mock_socket".MockSocket
+local Frame = require "lustre.frame"
+local FrameHeader = require "lustre.frame.frame_header"
+local OpCode = require "lustre.frame.opcode"
 
 describe('client', function ()
+    it("Send TEXT message that results in a single frame on the socket", function()
+        local message_data = "this is a short message"
+        local exp_frame_header = FrameHeader.default()
+            :set_fin(true)
+            :set_opcode(OpCode.text())
+            :set_length(#message_data)
+        local exp_frame = Frame.from_parts(exp_frame_header, message_data)
+        local socket = MockSocket.new({}, {}) --were not receiving anything we are just sending
+        local client = WebSocketClient.new(socket)
+        client:send(Message.new(Message.TEXT, message_data))
+        assert(socket.sent == #exp_frame:encode())
+    end)
+    it("Send BYTEs message that results in a single frame on the socket", function()
+
+    end)
     it('single frame message is received successfully', function ()
         
     end)
