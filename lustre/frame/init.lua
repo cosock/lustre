@@ -15,19 +15,17 @@ function Frame.from_stream(socket)
   if not payload then
     return nil, err
   end
-  local ret = Frame.from_parts(header, payload)
-  if ret:is_masked() then
-    ret:_apply_mask()
-  end
-  return ret
+  return Frame.from_parts(header, payload, header:is_masked())
 end
 
 function Frame.decode(bytes)
   local header, err = FrameHeader.decode(bytes)
   if not header then
     return nil, err
-  end
-  return Frame.from_parts(header, string.sub(bytes, header:len()+1))
+  end 
+  return Frame.from_parts(header,
+                          string.sub(bytes, header:len()+1),
+                          header:is_masked())
 end
 
 function Frame.ping(payload)
@@ -57,12 +55,23 @@ function Frame.close(close_code, reason)
   )
 end
 
-function Frame.from_parts(header, payload)
-  return setmetatable({
-    header = header,
-    payload = payload,
-    _applied_mask = false,
-  }, Frame)
+function Frame.from_parts(header, payload, apply_mask)
+  if apply_mask then
+    local fm = setmetatable({
+      header = header,
+      payload = payload,
+      _masked_payload = true,
+    }, Frame)
+    fm:apply_mask()
+    return fm
+  else
+    return setmetatable({
+      header = header,
+      payload = payload,
+      _masked_payload = false,
+    }, Frame)
+
+  end
 end
 
 function Frame:len()
@@ -73,10 +82,8 @@ function Frame:payload_len()
   return self.header:payload_len()
 end
 
----Check if this Frame is masked
----@return any
-function Frame:is_masked()
-  return self.header.masked
+function Frame:payload_is_masked()
+  return self._masked_payload
 end
 
 function Frame:is_final()
@@ -85,12 +92,6 @@ end
 
 function Frame:is_control()
   return self.header.opcode.type == 'control'
-end
-
----Get the mask array for this Frame
----@return number[]|nil @ 4 byte array
-function Frame:mask()
-  return self.header.mask
 end
 
 local function seed_once()
@@ -119,10 +120,7 @@ end
 ---client messages, this will unmask the payload.
 ---
 ---note: this applies the mask in place
-function Frame:_apply_mask()
-  if self._applied_mask then
-    return
-  end
+function Frame:apply_mask()
   if not self.header.mask then
     return nil, 'No mask to apply'
   end
@@ -133,14 +131,20 @@ function Frame:_apply_mask()
     unmasked = unmasked .. string.char(char)
   end
   self.payload = unmasked
-  self._applied_mask = true
+  self._masked_payload = not self._masked_payload
 end
 
 function Frame:encode()
-  if self:is_masked() then
-    self:_apply_mask()
+  local ret = self.header:encode()
+  if not self:payload_is_masked() then
+    self:apply_mask()
+    ret = ret .. self.payload
+    self:apply_mask() --undo masking
+  else
+    ret = ret .. self.payload
   end
-  return self.header:encode() .. self.payload
+
+  return ret
 end
 
 return Frame

@@ -263,6 +263,10 @@ function FrameHeader:encode()
   return string.char(table.unpack(bytes))
 end
 
+function FrameHeader:is_masked()
+  return self.masked
+end
+
 --#Builder
 
 ---Create a default FrameHeader
