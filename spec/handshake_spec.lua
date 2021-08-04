@@ -14,6 +14,7 @@ local function fill_headers(headers, t)
             t:add_header(key, value)
         end
     end
+    t._parsed_headers = true
 end
 
 local function mock_request(headers, method)
@@ -49,10 +50,12 @@ describe('handshake', function ()
             utils.assert_fmt(not h, 'Expected nil found %q', h)
             utils.assert_eq(err, 'Websocket handshake request version must be 1.1 found: "0.9"')
         end)
-        it('fails with no connection header', function ()
-            local headers = {}
+        it('fails with no connection header #test', function ()
+            local headers = {
+                upgrade = 'junk'
+            }
             local h, err = Handshake.server(
-                mock_request({}),
+                mock_request(headers),
                 mock_response({}))
             utils.assert_fmt(not h, 'Expected nil found %q', h)
             utils.assert_eq(err, 'Missing connection header')
@@ -111,7 +114,7 @@ describe('handshake', function ()
             utils.assert_fmt(not h, 'Expected nil found %q', h)
             utils.assert_eq(err, 'No Sec-Websocket-Key header present')
         end)
-        it('success, no protocols or encodings #test', function ()
+        it('success, no protocols or encodings', function ()
             local headers = {
                 connection = 'upgrade',
                 upgrade = 'websocket',
@@ -392,7 +395,7 @@ describe('handshake', function ()
             spy(req.get_headers)
             assert(h:validate_accept(req))
         end)
-        it('no validation of bad accept #test', function ()
+        it('no validation of bad accept', function ()
             local h = Handshake.client()
             local headers = {
                 sec_websocket_accept = 'junk',
