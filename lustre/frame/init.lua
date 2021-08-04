@@ -93,6 +93,21 @@ function Frame:mask()
   return self.header.mask
 end
 
+local function seed_once()
+  if seeded then return end
+  seeded = true
+  math.randomseed(os.time())
+end
+
+local function generate_mask()
+  seed_once()
+  local bytes = {}
+  for _ = 1, 16 do
+    table.insert(bytes, math.random(0,255))
+  end
+  return string.char(table.unpack(bytes))
+end
+
 function Frame:set_mask(mask)
   mask = mask or generate_mask()
   self.header:set_mask(mask)

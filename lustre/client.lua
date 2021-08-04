@@ -5,6 +5,8 @@ local Handshake = require 'lustre.handshake'
 local Key = require 'lustre.handshake.key'
 local Config = require 'lustre.config'
 local Frame = require 'lustre.frame'
+local FrameHeader = require "lustre.frame.frame_header"
+local OpCode = require "lustre.frame.opcode"
 local CloseCode = require 'lustre.frame.close'
 
 ---@class WebSocketClient
@@ -55,27 +57,24 @@ function WebSocketClient:send(message, ...)
     --
     -- why are we not calling?
     --  self.socket:send(Frame)
-    print("!!!!!! 1")
     local data_idx = 1
     local frames_sent = 0
-    while data_idx <= message.data.len() do
+    while data_idx <= message.data:len() do
         local header = FrameHeader.default()
         local payload = ""
-        if (message.data.len() - data_idx + 1) > self.config._max_frame_size then
+        if (message.data:len() - data_idx + 1) > self.config._max_frame_size then
             header.set_fin(false)
-        else
-
         end
         if message.type == 'bytes' then
-            header:set_opcode(OpCode.binary())
+            header:set_opcode(OpCode.binary()) 
         else
             header:set_opcode(OpCode.text())
         end
-        --todo set mask too?
         local frame = Frame.from_parts(
             header,
             string.sub(message.data, data_idx, data_idx + self.config._max_frame_size)
         )
+        frame:set_mask()
         local bytes, err = self.socket:send(frame:encode()) --todo do we get num bytes sent returned?
         data_idx = data_idx + bytes
         frames_sent = frames_sent + 1

@@ -4,6 +4,7 @@ local MockSocket = require "spec.mock_socket".MockSocket
 local Frame = require "lustre.frame"
 local FrameHeader = require "lustre.frame.frame_header"
 local OpCode = require "lustre.frame.opcode"
+local Message = require "lustre.message"
 
 describe('client', function ()
     it("Send TEXT message that results in a single frame on the socket", function()
@@ -16,9 +17,12 @@ describe('client', function ()
         local socket = MockSocket.new({}, {}) --were not receiving anything we are just sending
         local client = WebSocketClient.new(socket)
         client:send(Message.new(Message.TEXT, message_data))
-        assert(socket.sent == #exp_frame:encode())
+        assert(socket.sent == #exp_frame:encode()) 
     end)
     it("Send BYTEs message that results in a single frame on the socket", function()
+
+    end)
+    it("Masking is performed when sending a message", function()
 
     end)
     it('single frame message is received successfully', function ()

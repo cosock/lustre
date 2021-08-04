@@ -2,6 +2,7 @@
 local MockSocket = {}
 MockSocket.__index = MockSocket
 
+--TODO make this so that we can verify what is being sent on the socket
 function MockSocket.new(inner, send_errs)
     local ret = {
         recvd = 0,

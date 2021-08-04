@@ -20,6 +20,8 @@ function Message.new(type, data)
     }, Message)
 end
 
+return Message
+
 
 
 
