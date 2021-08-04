@@ -143,7 +143,7 @@ function CloseFrame.from_parts(code, reason)
     code = CloseCode.from_int(code)
   end
   return setmetatable({
-    code = code,
+    code = code or CloseCode.normal(),
     reason = reason or '',
   }, CloseFrame)
 end

@@ -8,6 +8,7 @@ local Frame = require 'lustre.frame'
 local FrameHeader = require "lustre.frame.frame_header"
 local OpCode = require "lustre.frame.opcode"
 local CloseCode = require 'lustre.frame.close'
+local Message = require "lustre.message"
 
 ---@class WebSocketClient
 ---
@@ -65,7 +66,7 @@ function WebSocketClient:send(message, ...)
         if (message.data:len() - data_idx + 1) > self.config._max_frame_size then
             header.set_fin(false)
         end
-        if message.type == 'bytes' then
+        if message.type == Message.BYTES then
             header:set_opcode(OpCode.binary()) 
         else
             header:set_opcode(OpCode.text())
@@ -79,7 +80,7 @@ function WebSocketClient:send(message, ...)
         data_idx = data_idx + bytes
         frames_sent = frames_sent + 1
     end
-    print("sent "..frames_sent.." frames.")
+    --print("sent "..frames_sent.." frames.")
 end
 
 function WebSocketClient:open(...)
@@ -113,10 +114,11 @@ end
 
 function WebSocketClient:start_receive_loop()
     local partial_frames = {}
+    local received_bytes = 0
     local frames_since_last_ping = 0
     local pending_pong = false
     while true do
-        local recv, _, err = cosock.select({self.socket, self._rx}, nil, self.config._keep_alive)
+        local recv, _, err = cosock.socket.select({self.socket, self._rx}, nil, self.config._keep_alive)
         if not recv then
             if err == "timeout" then
                 self.socket:send(Frame.ping():set_mask():encode())
@@ -153,7 +155,11 @@ function WebSocketClient:start_receive_loop()
                 end
             end
             if not frame:is_final() then
-                table.insert(partial_frames, frame.payload)
+                received_bytes = received_bytes + frame:payload_len()
+                --Dont build up a message payload that is bigger than max message size
+                if received_bytes <= self.config:max_message_size() then
+                    table.insert(partial_frames, frame.payload)
+                end
                 goto continue
             end
             local full_payload = frame.payload
@@ -162,8 +168,7 @@ function WebSocketClient:start_receive_loop()
                 full_payload = table.concat(partial_frames)
                 partial_frames = {}
             end
-            --todo encapsulate in a message object
-            self.message_cb(full_payload)
+            self.message_cb(Message:new(full_payload))
         elseif recv[1] == self._rx then
             self._rx:recieve() 
             --todo
