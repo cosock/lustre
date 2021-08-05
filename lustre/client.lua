@@ -10,6 +10,9 @@ local OpCode = require "lustre.frame.opcode"
 local CloseCode = require 'lustre.frame.close'
 local Message = require "lustre.message"
 
+--TODO We should obfuscate WebSocketClient from the user. They should
+-- only ever interact with a WebSocket class that acts as a client when 
+-- they call `connect`, and a server when they call `accept`.
 ---@class WebSocketClient
 ---
 ---@field url string the endpoint to hit
@@ -21,7 +24,17 @@ local Message = require "lustre.message"
 local WebSocketClient = {}
 WebSocketClient.__index = WebSocketClient
 
-function WebSocketClient.new(socket, url, config)
+---Create new client object
+---@param socket table tcp socket to connect on
+---@param url string url to connect
+---@param config Config 
+---@param message_cb function
+---@param error_cb function
+---@param close_cb function
+---@return client WebSocketClient
+---@return err string|nil
+function WebSocketClient.new(socket, url, config, ...)
+    --TODO how was this channel intended to be used again?
     local _tx, _rx = cosock.channel.new()
     return setmetatable({
         socket = socket,
@@ -30,34 +43,29 @@ function WebSocketClient.new(socket, url, config)
         config = config or Config.default(),
         _tx = _tx,
         _rx = _rx,
+        message_cb = message_cb,
+        error_cb = error_cb, 
+        close_cb = close_cb
     }, WebSocketClient)
 end
 
--- todo can this api be used by both client and server?
---  need to modify to use Handshake.server() as well.
--- Also, I think this could be private and then get encapsulated within the open
--- api. 
-function WebSocketClient:handshake()
-    local req = Request.new('GET', self.url, self.socket)
-    req:add_header('Connection', 'upgrade')
-    req:add_header('Sec-Websocket-Version', 13)
-    req:add_header('Sec-Websocket-Key', self.handshake_key)
-    req:send()
-
-    local res = Response.tcp_source(self.socket)
-    local handshake = Handshake.client(self.handshake_key, {}, {})
-    if not handshake:validate_accept(res) then
-        return nil, 'invalid handshake'
-    end
-    return 1
+---@param text string
+---@return bytes_sent number
+---@return err string|nil
+function WebSocketClient:send_text(text)
+    return nil, "not implmented"
 end
 
-function WebSocketClient:send(message, ...)
-    --self._tx:send(...)
-    -- need to define message structure: type, data, protocol/extension
-    --
-    -- why are we not calling?
-    --  self.socket:send(Frame)
+---@param bytes string 
+---@return bytes_sent number
+---@return err string|nil
+function WebSocketClient:send_bytes(bytes)
+    return nil, "not implmented"
+end
+
+---@param message Message
+---@return err string|nil
+function WebSocketClient:send(message)
     local data_idx = 1
     local frames_sent = 0
     while data_idx <= message.data:len() do
@@ -76,42 +84,67 @@ function WebSocketClient:send(message, ...)
             string.sub(message.data, data_idx, data_idx + self.config._max_frame_size)
         )
         frame:set_mask()
-        local bytes, err = self.socket:send(frame:encode()) --todo do we get num bytes sent returned?
+        local bytes, err = self.socket:send(frame:encode()) --todo do we get num bytes sent returned or does it return when all the bytes were sent?
         data_idx = data_idx + bytes
         frames_sent = frames_sent + 1
     end
     --print("sent "..frames_sent.." frames.")
 end
 
-function WebSocketClient:open(...)
+---@return success number 1 if handshake was successful
+---@return err string|nil
+function WebSocketClient:connect()
+    --TODO open tcp connection if it isn't open
+    --Do handshake
+    local req = Request.new('GET', self.url, self.socket)
+    req:add_header('Connection', 'upgrade')
+    req:add_header('Sec-Websocket-Version', 13)
+    req:add_header('Sec-Websocket-Key', self.handshake_key)
+    print(string.format("***starting handshake with req: %s", req))
+    req:send()
 
+    local res = Response.tcp_source(self.socket)
+    local handshake = Handshake.client(self.handshake_key, {}, {})
+    if not handshake:validate_accept(res) then
+        return nil, 'invalid handshake'
+    end
+    return 1
 end
 
+---@param close_code CloseCode
+---@param reason string
+---@return err string|nil
 function WebSocketClient:close(close_code, reason)
     local close_frame = Frame.close(close_code, reason):set_mask()
     self.socket:send(close_frame:encode())
     self._close_frame_sent = true
 end
 
----@param cb function
+---@return message Message
+---@return err string|nil
+function WebSocketClient:receive()
+
+---@param cb function called when a complete message has been received
 function WebSocketClient:register_message_cb(cb)
     if type(cb) == 'function' then
         self.message_cb = cb
     end
 end
----@param cb function
+
+---@param cb function called when there is an error
 function WebSocketClient:register_error_cb(cb)
     if type(cb) == 'function' then
         self.error_cb = cb
     end
 end
----@param cb function
+---@param cb function called when the connection was closed
 function WebSocketClient:register_close_cb(cb)
     if type(cb) == 'function' then
         self.close_cb = cb
     end
 end
 
+--TODO this will not be a public API and is very untested ATM.
 function WebSocketClient:start_receive_loop()
     local partial_frames = {}
     local received_bytes = 0
@@ -177,8 +210,5 @@ function WebSocketClient:start_receive_loop()
         ::continue::
     end
 end
-
-
-
 
 return WebSocketClient
