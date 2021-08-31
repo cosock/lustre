@@ -124,6 +124,8 @@ end
 ---@return err string|nil
 function WebSocketClient:receive()
 
+end
+
 ---@param cb function called when a complete message has been received
 function WebSocketClient:register_message_cb(cb)
     if type(cb) == 'function' then
