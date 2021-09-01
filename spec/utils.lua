@@ -29,8 +29,14 @@ local function table_string(v, pre, visited)
             else
                 ret = ret .. table_string(value, pre .. '  ', visited)
             end
-        else
+        elseif type(value) == 'function' then
+            ret = ret .. 'function'
+        elseif type(value) == 'string' then
+            ret = ret .. value
+        elseif type(value) == 'number' then
             ret = ret .. format_non_table(value)
+        else
+            ret = ret .. string.format("[%s]", type(value))
         end
     end
     return string.format('%s\n%s}', ret, orig_pre)
@@ -95,4 +101,5 @@ return {
     deep_equal = deep_equal,
     assert_ne = assert_ne,
     table_string = table_string,
+    serialize_table = serializeTable,
 }

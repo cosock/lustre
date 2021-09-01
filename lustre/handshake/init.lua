@@ -20,6 +20,9 @@ end
 ---@param res Response
 ---@return boolean
 function Handshake:validate_accept(res)
+    if not res then
+        print("!!!!! error condition should not have happend")
+    end
     local headers = res:get_headers()
     local accept = headers:get_one('Sec-Websocket-Accept')
     if not accept then

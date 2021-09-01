@@ -34,6 +34,7 @@ describe('handshake', function ()
         local key = Key.build_accept_from('dGhlIHNhbXBsZSBub25jZQ==');
         utils.assert_eq(key, 's3pPLMBiTxaQ9kYGzzhZRbK+xOo=')
     end)
+    --[[
     describe('server', function ()
         it('fails with bad response', function ()
             local h, err = Handshake.server({}, {has_sent = function() return true end})
@@ -360,6 +361,7 @@ describe('handshake', function ()
             utils.assert_eq(h.extensions[3].params.bar, 'false')
         end)
     end)
+--]]
     describe('client', function ()
         it('constructs with no protocols, not encodings', function ()
 

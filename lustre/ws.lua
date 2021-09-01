@@ -9,6 +9,7 @@ local FrameHeader = require "lustre.frame.frame_header"
 local OpCode = require "lustre.frame.opcode"
 local CloseCode = require 'lustre.frame.close'
 local Message = require "lustre.message"
+local utils = require "luncheon.print"
 
 ---@class WebSocket
 ---
@@ -22,7 +23,7 @@ local WebSocket = {}
 WebSocket.__index = WebSocket
 
 ---Create new client object
----@param socket table tcp socket to connect on
+---@param socket table connected tcp socket
 ---@param url string url to connect
 ---@param config Config 
 ---@param message_cb function
@@ -32,7 +33,7 @@ WebSocket.__index = WebSocket
 ---@return err string|nil
 function WebSocket.client(socket, url, config, ...)
     --TODO how was this channel intended to be used again?
-    local _tx, _rx = cosock.channel.new()
+    --local _tx, _rx = cosock.channel.new()
     return setmetatable({
         is_client = true,
         socket = socket,
@@ -47,7 +48,7 @@ function WebSocket.client(socket, url, config, ...)
     }, WebSocket)
 end
 
-function WebSocket.server(socket, url, config, ...)
+function WebSocket.server(socket, config, ...)
 end
 
 
@@ -94,6 +95,7 @@ end
 ---@param message Message
 ---@return err string|nil
 function WebSocket:send(message)
+    print("sending msg: ", message)
     local data_idx = 1
     local frames_sent = 0
     while data_idx <= message.data:len() do
@@ -122,19 +124,26 @@ end
 ---@return success number 1 if handshake was successful
 ---@return err string|nil
 function WebSocket:connect()
-    if not self.is_client then
+    if not self.is_client then --todo use metatables to enforce this
         return nil, "only a client can connect"
     end
     --TODO open tcp connection if it isn't open
     --Do handshake
     local req = Request.new('GET', self.url, self.socket)
-    req:add_header('Connection', 'upgrade')
+    req:add_header('Connection', 'Upgrade')
+    req:add_header('Upgrade', 'websocket')
     req:add_header('Sec-Websocket-Version', 13)
     req:add_header('Sec-Websocket-Key', self.handshake_key)
-    print(string.format("***starting handshake with req: %s", req))
+    req:add_header("Host", "127.0.0.1:9000") --TODO revisit how we handle urls
+    print(string.format("Starting handshake with req: %s", utils.stringify_table(req)))
+    
     req:send()
+    print("Sent request")
 
-    local res = Response.tcp_source(self.socket)
+    local res, err = Response.tcp_source(self.socket)
+    if not res then
+        return nil, "Failed to get response to upgrade request"
+    end
     local handshake = Handshake.client(self.handshake_key, {}, {})
     if not handshake:validate_accept(res) then
         return nil, 'invalid handshake'
