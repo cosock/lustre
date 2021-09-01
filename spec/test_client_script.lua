@@ -12,7 +12,7 @@ local PORT = 9000
 local function green_light_echo()
     local url = "/"
     local sock, err = socket.tcp()
-    if err then print("ERROR: ", err)
+    if err then print("ERROR: ", err) end
     local r, err = sock:connect(HOST, PORT)
     if err then print("ERROR: ", err) end
 

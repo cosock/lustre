@@ -10,10 +10,7 @@ local OpCode = require "lustre.frame.opcode"
 local CloseCode = require 'lustre.frame.close'
 local Message = require "lustre.message"
 
---TODO We should obfuscate WebSocketClient from the user. They should
--- only ever interact with a WebSocket class that acts as a client when 
--- they call `connect`, and a server when they call `accept`.
----@class WebSocketClient
+---@class WebSocket
 ---
 ---@field url string the endpoint to hit
 ---@field socket table lua socket
@@ -21,8 +18,8 @@ local Message = require "lustre.message"
 ---@field config Config
 ---@field _tx table
 ---@field _rx table
-local WebSocketClient = {}
-WebSocketClient.__index = WebSocketClient
+local WebSocket = {}
+WebSocket.__index = WebSocket
 
 ---Create new client object
 ---@param socket table tcp socket to connect on
@@ -31,41 +28,72 @@ WebSocketClient.__index = WebSocketClient
 ---@param message_cb function
 ---@param error_cb function
 ---@param close_cb function
----@return client WebSocketClient
+---@return client WebSocket
 ---@return err string|nil
-function WebSocketClient.new(socket, url, config, ...)
+function WebSocket.client(socket, url, config, ...)
     --TODO how was this channel intended to be used again?
     local _tx, _rx = cosock.channel.new()
     return setmetatable({
+        is_client = true,
         socket = socket,
         url = url or '/',
         handshake_key = Key.generate_key(),
         config = config or Config.default(),
         _tx = _tx,
         _rx = _rx,
-        message_cb = message_cb,
-        error_cb = error_cb, 
-        close_cb = close_cb
-    }, WebSocketClient)
+        message_cb = arg[1],
+        error_cb = arg[2], 
+        close_cb = arg[3],
+    }, WebSocket)
+end
+
+function WebSocket.server(socket, url, config, ...)
+end
+
+
+---@param cb function called when a complete message has been received
+---@return self WebSocket
+function WebSocket:register_message_cb(cb)
+    if type(cb) == 'function' then
+        self.message_cb = cb
+    end
+    return self
+end
+
+---@param cb function called when there is an error
+---@return self WebSocket
+function WebSocket:register_error_cb(cb)
+    if type(cb) == 'function' then
+        self.error_cb = cb
+    end
+    return self
+end
+---@param cb function called when the connection was closed
+---@return self WebSocket
+function WebSocket:register_close_cb(cb)
+    if type(cb) == 'function' then
+        self.close_cb = cb
+    end
+    return self
 end
 
 ---@param text string
 ---@return bytes_sent number
 ---@return err string|nil
-function WebSocketClient:send_text(text)
+function WebSocket:send_text(text)
     return nil, "not implmented"
 end
 
 ---@param bytes string 
 ---@return bytes_sent number
 ---@return err string|nil
-function WebSocketClient:send_bytes(bytes)
+function WebSocket:send_bytes(bytes)
     return nil, "not implmented"
 end
 
 ---@param message Message
 ---@return err string|nil
-function WebSocketClient:send(message)
+function WebSocket:send(message)
     local data_idx = 1
     local frames_sent = 0
     while data_idx <= message.data:len() do
@@ -93,7 +121,10 @@ end
 
 ---@return success number 1 if handshake was successful
 ---@return err string|nil
-function WebSocketClient:connect()
+function WebSocket:connect()
+    if not self.is_client then
+        return nil, "only a client can connect"
+    end
     --TODO open tcp connection if it isn't open
     --Do handshake
     local req = Request.new('GET', self.url, self.socket)
@@ -111,10 +142,13 @@ function WebSocketClient:connect()
     return 1
 end
 
+function WebSocket:accept()
+end
+
 ---@param close_code CloseCode
 ---@param reason string
 ---@return err string|nil
-function WebSocketClient:close(close_code, reason)
+function WebSocket:close(close_code, reason)
     local close_frame = Frame.close(close_code, reason):set_mask()
     self.socket:send(close_frame:encode())
     self._close_frame_sent = true
@@ -122,32 +156,12 @@ end
 
 ---@return message Message
 ---@return err string|nil
-function WebSocketClient:receive()
+function WebSocket:receive()
 
-end
-
----@param cb function called when a complete message has been received
-function WebSocketClient:register_message_cb(cb)
-    if type(cb) == 'function' then
-        self.message_cb = cb
-    end
-end
-
----@param cb function called when there is an error
-function WebSocketClient:register_error_cb(cb)
-    if type(cb) == 'function' then
-        self.error_cb = cb
-    end
-end
----@param cb function called when the connection was closed
-function WebSocketClient:register_close_cb(cb)
-    if type(cb) == 'function' then
-        self.close_cb = cb
-    end
 end
 
 --TODO this will not be a public API and is very untested ATM.
-function WebSocketClient:start_receive_loop()
+function WebSocket:start_receive_loop()
     local partial_frames = {}
     local received_bytes = 0
     local frames_since_last_ping = 0
@@ -213,4 +227,4 @@ function WebSocketClient:start_receive_loop()
     end
 end
 
-return WebSocketClient
+return WebSocket

@@ -4,7 +4,7 @@ local Frame = require 'lustre.frame'
 local Handshake = require 'lustre.handshake'
 local Opcode = require 'lustre.frame.opcode'
 local Message = require 'lustre.message'
-local WebSocketClient = require 'lustre.client'
+local WebSocket = require 'lustre.ws'
 
 return {
   CloseCode = CloseCode,
@@ -12,6 +12,6 @@ return {
   Frame = Frame,
   Handshake = Handshake,
   Opcode = Opcode,
-  WebSocketClient = WebSocketClient,
+  WebSocket = WebSocket,
   Message = Message,
 }
