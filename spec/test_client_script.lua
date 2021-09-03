@@ -20,21 +20,19 @@ local function green_light_echo()
 
     local r, err = sock:connect(HOST, PORT)
     print("INFO: Connecting to tcp socket")
-    if err then
+    if not r then
         print("ERROR: ", err)
         return
     end
 
+    print("INFO: Setting keepalive and timeout")
+    --sock:settimeout(2)
+    --sock:setoption("keepalive", true)
+
     local config = nil
     local websocket = ws.client(sock, "/", config)
-    --print("Created websocket", utils.stringify_table(websocket))
 
-
-    print("sleeping before we do ws connection and handshake\n")
-    socket.sleep(2)
-    -- ^^ this calls the WebSocket:send() api not the tcpclient:send() api
-
-
+    print("INFO: Connection websocket")
     local success, err = websocket:connect()
     if err then
         print("!!Failed to open: ", err)

@@ -11,6 +11,8 @@ local CloseCode = require 'lustre.frame.close'
 local Message = require "lustre.message"
 local utils = require "luncheon.print"
 
+--TODO cleanup print statements
+
 ---@class WebSocket
 ---
 ---@field url string the endpoint to hit
@@ -129,20 +131,27 @@ function WebSocket:connect()
     end
     --TODO open tcp connection if it isn't open
     --Do handshake
+    --TODO does it make more sense to move the req/resp into the handshake.client() function?
     local req = Request.new('GET', self.url, self.socket)
     req:add_header('Connection', 'Upgrade')
     req:add_header('Upgrade', 'websocket')
     req:add_header('Sec-Websocket-Version', 13)
     req:add_header('Sec-Websocket-Key', self.handshake_key)
     req:add_header("Host", "127.0.0.1:9000") --TODO revisit how we handle urls
-    print(string.format("Starting handshake with req: %s", utils.stringify_table(req)))
     
-    req:send()
-    print("Sent request")
+    print("Starting handshake")
+    --print(string.format("Starting handshake with req: %s", utils.stringify_table(req)))
+    
+    local s, err = req:send()
+    if not s then
+        print("Send request failure: ", err)
+        return err
+    end
+    print("INFO: Sent handshake request")
 
     local res, err = Response.tcp_source(self.socket)
     if not res then
-        return nil, "Failed to get response to upgrade request"
+        return nil, "Upgrade response failure: "..err
     end
     local handshake = Handshake.client(self.handshake_key, {}, {})
     if not handshake:validate_accept(res) then

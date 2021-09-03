@@ -7,11 +7,11 @@ local Key = require 'lustre.handshake.key'
 local Handshake = {}
 Handshake.__index = Handshake
 
-function Handshake.client(protocols, extensions)
+function Handshake.client(key, protocols, extensions)
     return setmetatable({
         protocols = protocols or {},
         extensions = extensions or {},
-        key = Key.generate_key(),
+        key = key or Key.generate_key(),
     }, Handshake)
 end
 
@@ -19,19 +19,27 @@ end
 ---the server
 ---@param res Response
 ---@return boolean
+---@return err
 function Handshake:validate_accept(res)
     if not res then
-        print("!!!!! error condition should not have happend")
+        return false, "no response object"
     end
-    local headers = res:get_headers()
+    local headers, err = res:get_headers()
+    if not headers then
+        return false, "failed to parse handshake response headers: " .. err
+    end
     local accept = headers:get_one('Sec-Websocket-Accept')
     if not accept then
-        return nil, 'Invalid request, no Sec-Websocket-Accept header'
+        return false, 'Invalid request, no Sec-Websocket-Accept header'
     end
     if not self.accept then
         self.accept = Key.build_accept_from(self.key)
     end
-    return self.accept == accept
+    if self.accept == accept then
+        return true
+    else
+        return false, string.format("accept header [%s] does not match expected [%s]", accept, self.accept)
+    end
 end
 
 local function parse_protocols(s, dest)
