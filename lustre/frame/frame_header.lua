@@ -350,7 +350,7 @@ end
 ---@return FrameHeader
 function FrameHeader:set_mask(value)
   self.mask_length = value and 4
-  if #value ~= 4 then
+  if self.mask_length ~= 4 then
     return nil, 'Failed to set mask, must be 4 bytes'
   end
   self.masked = value ~= nil

@@ -56,6 +56,7 @@ function Frame.close(close_code, reason)
 end
 
 function Frame.from_parts(header, payload, apply_mask)
+  header:set_length(#payload)
   if apply_mask then
     local fm = setmetatable({
       header = header,
@@ -103,10 +104,11 @@ end
 local function generate_mask()
   seed_once()
   local bytes = {}
-  for _ = 1, 16 do
+  for _ = 1, 4 do
     table.insert(bytes, math.random(0,255))
   end
-  return string.char(table.unpack(bytes))
+  --return string.char(table.unpack(bytes))
+  return bytes
 end
 
 function Frame:set_mask(mask)
@@ -125,8 +127,8 @@ function Frame:apply_mask()
     return nil, 'No mask to apply'
   end
   local unmasked = ''
-  for i = 1, #self.payload do
-    local byte = string.byte(self.payload, i, i)
+  for i = 0, #self.payload - 1 do
+    local byte = string.byte(self.payload, i + 1, i + 1)
     local char = byte ~ self.header.mask[(i % 4) + 1]
     unmasked = unmasked .. string.char(char)
   end
@@ -134,9 +136,12 @@ function Frame:apply_mask()
   self._masked_payload = not self._masked_payload
 end
 
+--local utils = require "luncheon.print"
 function Frame:encode()
+  --print("Encoding frame: \n", utils.stringify_table(self))
   local ret = self.header:encode()
   if not self:payload_is_masked() then
+    --print("applying mask")
     self:apply_mask()
     ret = ret .. self.payload
     self:apply_mask() --undo masking

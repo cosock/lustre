@@ -25,24 +25,24 @@ local function green_light_echo()
         return
     end
 
-    print("INFO: Setting keepalive and timeout")
-    --sock:settimeout(2)
-    --sock:setoption("keepalive", true)
-
     local config = nil
-    local websocket = ws.client(sock, "/", config)
+    local websocket = ws.client(sock, "/", config):register_message_cb(
+        function (msg)
+            print("INFO: Received msg: ", msg.data)
+        end)
 
     print("INFO: Connection websocket")
     local success, err = websocket:connect()
     if err then
-        print("!!Failed to open: ", err)
+        print("ERROR: ", err)
         return
     end
 
-    local data = "asdfasdfasdf"
-    local bytes, err = websocket:send(data)
+    local data = "asdf"
+    print("INFO: Sending text ", data)
+    local bytes, err = websocket:send_text(data)
     if err then
-        print("!!Failed to send: ", err)
+        print("ERROR: ", err)
         return
     end
 
@@ -51,7 +51,7 @@ local function green_light_echo()
         print("!!Received echo from echoserver: ", msg.data)
     else
         print("!!Failed to receive: ", err)
-        print("\tnot exiting")
+        exit()
     end
 
     local close_code = CloseCode.normal()

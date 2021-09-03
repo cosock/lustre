@@ -1,4 +1,5 @@
 local cosock = require 'cosock'
+local socket = require "socket"
 local Request = require "luncheon.request"
 local Response = require "luncheon.response"
 local Handshake = require 'lustre.handshake'
@@ -81,10 +82,32 @@ function WebSocket:register_close_cb(cb)
 end
 
 ---@param text string
----@return bytes_sent number
 ---@return err string|nil
 function WebSocket:send_text(text)
-    return nil, "not implmented"
+    local data_idx = 1
+    local frames_sent = 0
+    local total_bytes
+    while data_idx <= text:len() do
+        local header = FrameHeader.default()
+        local payload = ""
+        if (text:len() - data_idx + 1) > self.config._max_frame_size then
+            header.set_fin(false)
+        end
+        header:set_opcode(OpCode.text())
+        local frame = Frame.from_parts(
+            header,
+            string.sub(text, data_idx, data_idx + self.config._max_frame_size)
+        )
+        frame:set_mask() --todo handle client vs server
+        local bytes, err = self.socket:send(frame:encode()) --todo do we get num bytes sent returned or does it return when all the bytes were sent?
+        if not bytes then
+            --print("failed to send frame on socket: "..err)
+            return err
+        end
+        data_idx = data_idx + bytes
+        frames_sent = frames_sent + 1
+    end
+    --print("sent "..frames_sent.." frames.")
 end
 
 ---@param bytes string 
@@ -97,30 +120,7 @@ end
 ---@param message Message
 ---@return err string|nil
 function WebSocket:send(message)
-    print("sending msg: ", message)
-    local data_idx = 1
-    local frames_sent = 0
-    while data_idx <= message.data:len() do
-        local header = FrameHeader.default()
-        local payload = ""
-        if (message.data:len() - data_idx + 1) > self.config._max_frame_size then
-            header.set_fin(false)
-        end
-        if message.type == Message.BYTES then
-            header:set_opcode(OpCode.binary()) 
-        else
-            header:set_opcode(OpCode.text())
-        end
-        local frame = Frame.from_parts(
-            header,
-            string.sub(message.data, data_idx, data_idx + self.config._max_frame_size)
-        )
-        frame:set_mask()
-        local bytes, err = self.socket:send(frame:encode()) --todo do we get num bytes sent returned or does it return when all the bytes were sent?
-        data_idx = data_idx + bytes
-        frames_sent = frames_sent + 1
-    end
-    --print("sent "..frames_sent.." frames.")
+    return "not implemented"
 end
 
 ---@return success number 1 if handshake was successful
@@ -131,31 +131,26 @@ function WebSocket:connect()
     end
     --TODO open tcp connection if it isn't open
     --Do handshake
-    --TODO does it make more sense to move the req/resp into the handshake.client() function?
     local req = Request.new('GET', self.url, self.socket)
     req:add_header('Connection', 'Upgrade')
     req:add_header('Upgrade', 'websocket')
     req:add_header('Sec-Websocket-Version', 13)
     req:add_header('Sec-Websocket-Key', self.handshake_key)
     req:add_header("Host", "127.0.0.1:9000") --TODO revisit how we handle urls
-    
-    print("Starting handshake")
-    --print(string.format("Starting handshake with req: %s", utils.stringify_table(req)))
-    
+      
     local s, err = req:send()
     if not s then
-        print("Send request failure: ", err)
+        print("Handshake request failure: ", err)
         return err
     end
-    print("INFO: Sent handshake request")
-
     local res, err = Response.tcp_source(self.socket)
     if not res then
         return nil, "Upgrade response failure: "..err
     end
     local handshake = Handshake.client(self.handshake_key, {}, {})
-    if not handshake:validate_accept(res) then
-        return nil, 'invalid handshake'
+    local success, err = handshake:validate_accept(res)
+    if not success then
+        return nil, 'invalid handshake: '..err
     end
     return 1
 end
@@ -175,17 +170,12 @@ end
 ---@return message Message
 ---@return err string|nil
 function WebSocket:receive()
-
-end
-
---TODO this will not be a public API and is very untested ATM.
-function WebSocket:start_receive_loop()
     local partial_frames = {}
     local received_bytes = 0
     local frames_since_last_ping = 0
     local pending_pong = false
     while true do
-        local recv, _, err = cosock.socket.select({self.socket, self._rx}, nil, self.config._keep_alive)
+        local recv, _, err = socket.select({self.socket, self._rx}, nil, self.config._keep_alive)
         if not recv then
             if err == "timeout" then
                 self.socket:send(Frame.ping():set_mask():encode())
@@ -235,7 +225,7 @@ function WebSocket:start_receive_loop()
                 full_payload = table.concat(partial_frames)
                 partial_frames = {}
             end
-            self.message_cb(Message:new(full_payload))
+            if self.message_cb then self.message_cb(Message:new(full_payload)) end
         elseif recv[1] == self._rx then
             self._rx:recieve() 
             --todo
