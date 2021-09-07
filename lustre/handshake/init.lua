@@ -79,11 +79,7 @@ end
 ---@param res Response
 ---@return Handshake|nil
 ---@return string
-local utils = require "spec.utils"
 function Handshake.server(req, res)
-    print("Handshake.server()")
-    print("req:\n", utils.table_string(req))
-    print("res:\n", utils.table_string(res))
     if res:has_sent() then
         return nil, 'Cannot handshake on used response'
     end
@@ -94,13 +90,10 @@ function Handshake.server(req, res)
         return nil, string.format('Websocket handshake request version must be 1.1 found: %q', req.http_version)
     end
     local headers, err = req:get_headers()
-    print("headers = ", headers)
     if not headers then
-        print("there are no headers and err is ", err)
         return nil, err
     end
     local connection = headers:get_one('Connection')
-    print("do we have a connection? ", connection)
     if not connection then
         return nil, 'Missing connection header'
     end

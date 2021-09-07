@@ -56,7 +56,6 @@ function Frame.close(close_code, reason)
 end
 
 function Frame.from_parts(header, payload, apply_mask)
-  header:set_length(#payload)
   if apply_mask then
     local fm = setmetatable({
       header = header,
@@ -107,7 +106,6 @@ local function generate_mask()
   for _ = 1, 4 do
     table.insert(bytes, math.random(0,255))
   end
-  --return string.char(table.unpack(bytes))
   return bytes
 end
 

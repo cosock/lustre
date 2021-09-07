@@ -93,10 +93,12 @@ function WebSocket:send_text(text)
         if (text:len() - data_idx + 1) > self.config._max_frame_size then
             header.set_fin(false)
         end
+        payload = string.sub(text, data_idx, data_idx + self.config._max_frame_size)
         header:set_opcode(OpCode.text())
+        header:set_length(#payload)
         local frame = Frame.from_parts(
             header,
-            string.sub(text, data_idx, data_idx + self.config._max_frame_size)
+            payload
         )
         frame:set_mask() --todo handle client vs server
         local bytes, err = self.socket:send(frame:encode()) --todo do we get num bytes sent returned or does it return when all the bytes were sent?

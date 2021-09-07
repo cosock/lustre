@@ -2,9 +2,7 @@
 local MockSocket = {}
 MockSocket.__index = MockSocket
 
---NOTE: It currently is not helpful to have both expect_send and send_errs
--- we should have some send and receive channels
-function MockSocket.new(inner, send_errs, expect_send)
+function MockSocket.new(inner, send_errs)
     local ret = {
         recvd = 0,
         sent = 0,

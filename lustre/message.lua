@@ -1,5 +1,4 @@
 ---@class Message
---TODO docstrings
 ---@field protocols string[] List of requested protocols
 ---@field extensions table[] List of requested extensions
 ---@field key string|nil Signing key
@@ -13,7 +12,6 @@ Message.TEXT = 'text'
 ---@param type string ['bytes'|'text']
 ---@param data string
 function Message.new(type, data)
-    --TODO set metatable
     return setmetatable({
         type = type,
         data = data
@@ -21,11 +19,3 @@ function Message.new(type, data)
 end
 
 return Message
-
-
-
-
-
-
-
-

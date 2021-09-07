@@ -35,6 +35,7 @@ describe('handshake', function ()
         utils.assert_eq(key, 's3pPLMBiTxaQ9kYGzzhZRbK+xOo=')
     end)
     --[[
+    -- Server functionality isn't supported yet
     describe('server', function ()
         it('fails with bad response', function ()
             local h, err = Handshake.server({}, {has_sent = function() return true end})

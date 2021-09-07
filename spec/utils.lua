@@ -100,6 +100,5 @@ return {
     assert_eq = assert_eq,
     deep_equal = deep_equal,
     assert_ne = assert_ne,
-    table_string = table_string,
-    serialize_table = serializeTable,
+    table_string = table_string
 }

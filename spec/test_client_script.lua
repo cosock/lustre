@@ -5,6 +5,9 @@ local utils = require "luncheon.print"
 local CloseCode = require "lustre.frame.close"
 
 
+--- Autobahn test framework echo server
+--- Start it with:
+--- `docker run -it -p 9000:9000 crossbario/autobahn-testsuite wstest -d -m echoserver -w ws://localhost:9000`
 local HOST = "127.0.0.1"
 local PORT = 9000
 
@@ -63,38 +66,7 @@ local function green_light_echo()
     end
 end
 
----This seemed to have worked well to ensure that our underlying socket is 
---- working properly. We must be closing it too soon from luncheon, or
---- it is being closed from the web socket lib
-local function tcp_socket_test()
-    local sock, err = socket.tcp()
-    print("INFO: Getting tcp socket")
-    if err then
-        print("ERROR: ", err)
-        return
-    end
-    sock:settimeout(5, "t")
-    local r, err = sock:connect(HOST, PORT)
-    print("INFO: Connecting to tcp socket")
-    if err then
-        print("ERROR: ", err)
-        return
-    end
-    print("sending data")
-    sock:send("asdfasdfasdfasdfasdfasdfasdfasdf")
-
-    print("sleeping for 4 seccs")
-    socket.sleep(4)
-    --local res, err = sock:receive()
-    sock:close()
-    print("Closed")
-end
-
-
-
 green_light_echo()
---tcp_socket_test()
-
 
 
 --[[
