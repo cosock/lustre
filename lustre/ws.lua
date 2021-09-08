@@ -34,8 +34,7 @@ WebSocket.__index = WebSocket
 ---@return client WebSocket
 ---@return err string|nil
 function WebSocket.client(socket, url, config, ...)
-    --TODO how was this channel intended to be used again?
-    --local _tx, _rx = cosock.channel.new()
+    local _tx, _rx = cosock.channel.new()
     return setmetatable({
         is_client = true,
         socket = socket,
@@ -101,6 +100,7 @@ function WebSocket:send_text(text)
         )
         frame:set_mask() --todo handle client vs server
         local bytes, err = self.socket:send(frame:encode()) --todo do we get num bytes sent returned or does it return when all the bytes were sent?
+        --TODO send frame over cosock channel to be sent on socket from receive loop
         if not bytes then
             --print("failed to send frame on socket: "..err)
             return err
@@ -138,7 +138,11 @@ function WebSocket:connect()
     req:add_header('Sec-Websocket-Version', 13)
     req:add_header('Sec-Websocket-Key', self.handshake_key)
     req:add_header("Host", "127.0.0.1:9000") --TODO revisit how we handle urls
-      
+    for _, prot in ipairs(self.config.protocols) do
+        --TODO I think luncheon should be able to handle multiple values, but
+        -- it currently only sends the last value added
+        req:add_header("Sec-Websocket-Protocol", prot)
+    end
     local s, err = req:send()
     if not s then
         print("Handshake request failure: ", err)

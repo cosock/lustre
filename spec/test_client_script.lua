@@ -2,6 +2,7 @@ local ws = require "lustre.ws"
 local cosock = require "cosock"
 local socket = cosock.socket
 local CloseCode = require "lustre.frame.close".CloseCode
+local Config = require "lustre.config"
 
 
 --- Autobahn test framework echo server
@@ -26,8 +27,8 @@ local function green_light_echo()
         print("ERROR: ", err)
         return
     end
-    local data = "asdf"
-    local config = nil
+    local data = "asdffdasdfdsfasdfaDEADBEEF"
+    local config = Config.default():protocol('Gabbo')
     local recvd = false
     local websocket = ws.client(sock, "/", config)
     websocket:register_message_cb(
