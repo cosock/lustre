@@ -10,7 +10,6 @@ local FrameHeader = require "lustre.frame.frame_header"
 local OpCode = require "lustre.frame.opcode"
 local CloseCode = require 'lustre.frame.close'
 local Message = require "lustre.message"
-local utils = require "luncheon.print"
 
 --TODO cleanup print statements
 
@@ -154,6 +153,7 @@ function WebSocket:connect()
     if not success then
         return nil, 'invalid handshake: '..err
     end
+    cosock.spawn(function() self:receive_loop() end, 'Client receive loop')
     return 1
 end
 
@@ -165,13 +165,15 @@ end
 ---@return err string|nil
 function WebSocket:close(close_code, reason)
     local close_frame = Frame.close(close_code, reason):set_mask()
-    self.socket:send(close_frame:encode())
+    local sent, err = self.socket:send(close_frame:encode())
+    if not sent then return nil, err end
     self._close_frame_sent = true
+    return 1
 end
 
 ---@return message Message
 ---@return err string|nil
-function WebSocket:receive()
+function WebSocket:receive_loop()
     local partial_frames = {}
     local received_bytes = 0
     local frames_since_last_ping = 0
@@ -229,7 +231,7 @@ function WebSocket:receive()
             end
             if self.message_cb then self.message_cb(Message:new(full_payload)) end
         elseif recv[1] == self._rx then
-            self._rx:recieve() 
+            self._rx:recieve()
             --todo
         end
 
