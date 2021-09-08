@@ -126,11 +126,21 @@ end
 
 ---@return success number 1 if handshake was successful
 ---@return err string|nil
-function WebSocket:connect()
+function WebSocket:connect(host, port)
     if not self.is_client then --todo use metatables to enforce this
         return nil, "only a client can connect"
     end
-    --TODO open tcp connection if it isn't open
+    if not host or not port then
+        return nil, "missing host or port"
+    end
+
+    -- open socket
+    --TODO what happens if the socket is already connected? 
+    local r, err = self.socket:connect(host, port)
+    if not r then
+        return nil, "socket connect failure: "..err
+    end
+
     --Do handshake
     local req = Request.new('GET', self.url, self.socket)
     req:add_header('Connection', 'Upgrade')

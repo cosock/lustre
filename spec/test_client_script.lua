@@ -20,14 +20,7 @@ local function green_light_echo()
         print("ERROR: ", err)
         return
     end
-    -- Note: we should probably put this inside of the client construction/connect
-    local r, err = sock:connect(HOST, PORT)
-    print("INFO: Connecting to tcp socket")
-    if not r then
-        print("ERROR: ", err)
-        return
-    end
-    local data = "asdffdasdfdsfasdfaDEADBEEF"
+    local data = "asdf"
     local config = Config.default():protocol('Gabbo')
     local recvd = false
     local websocket = ws.client(sock, "/", config)
@@ -51,7 +44,7 @@ local function green_light_echo()
         end)
 
     print("INFO: Connection websocket")
-    local success, err = websocket:connect()
+    local success, err = websocket:connect(HOST, PORT)
     if err then
         print("ERROR: ", err)
         return
