@@ -8,8 +8,10 @@ local Config = require 'lustre.config'
 local Frame = require 'lustre.frame'
 local FrameHeader = require "lustre.frame.frame_header"
 local OpCode = require "lustre.frame.opcode"
-local CloseCode = require 'lustre.frame.close'
+local CloseCode = require 'lustre.frame.close'.CloseCode
 local Message = require "lustre.message"
+
+local utils = require "spec.utils"
 
 --TODO cleanup print statements
 
@@ -85,7 +87,7 @@ function WebSocket:send_text(text)
     local data_idx = 1
     local frames_sent = 0
     local total_bytes
-    while data_idx <= text:len() do
+    while data_idx <= text:len() + 1 do
         local header = FrameHeader.default()
         local payload = ""
         if (text:len() - data_idx + 1) > self.config._max_frame_size then
@@ -99,6 +101,7 @@ function WebSocket:send_text(text)
             payload
         )
         frame:set_mask() --todo handle client vs server
+        print(os.clock(), " sending frame: ", utils.table_string(frame))
         local bytes, err = self.socket:send(frame:encode()) --todo do we get num bytes sent returned or does it return when all the bytes were sent?
         --TODO send frame over cosock channel to be sent on socket from receive loop
         if not bytes then
@@ -145,14 +148,16 @@ function WebSocket:connect(host, port)
     local req = Request.new('GET', self.url, self.socket)
     req:add_header('Connection', 'Upgrade')
     req:add_header('Upgrade', 'websocket')
+    req:add_header('User-Agent', "lua-lustre")
     req:add_header('Sec-Websocket-Version', 13)
     req:add_header('Sec-Websocket-Key', self.handshake_key)
-    req:add_header("Host", "127.0.0.1:9000") --TODO revisit how we handle urls
+    req:add_header("Host", string.format("%s:%d", host, port))
     for _, prot in ipairs(self.config.protocols) do
         --TODO I think luncheon should be able to handle multiple values, but
         -- it currently only sends the last value added
         req:add_header("Sec-Websocket-Protocol", prot)
     end
+    --print("send req: \n", req:serialize())
     local s, err = req:send()
     if not s then
         print("Handshake request failure: ", err)
@@ -178,6 +183,7 @@ end
 ---@param reason string
 ---@return err string|nil
 function WebSocket:close(close_code, reason)
+    print("closing websocket")
     local close_frame = Frame.close(close_code, reason):set_mask()
     local sent, err = self.socket:send(close_frame:encode())
     if not sent then return nil, err end
@@ -193,6 +199,7 @@ function WebSocket:receive_loop()
     local frames_since_last_ping = 0
     local pending_pong = false
     while true do
+        print(os.clock(), "tick: ")
         local recv, _, err = socket.select({self.socket, self._rx}, nil, self.config._keep_alive)
         if not recv then
             if err == "timeout" then
@@ -202,9 +209,23 @@ function WebSocket:receive_loop()
             goto continue
         end
         if recv[1] == self.socket then
+            print(os.clock(), "ready to get frame from stream")
             local frame, err = Frame.from_stream(self.socket)
+            print(os.clock(), " receiving frame: ", utils.table_string(frame))
             if not frame then
-                self.error_cb(err)
+                if self._close_frame_sent then
+                    return
+                elseif self.error_cb then
+                    print("errcb")
+                    self.error_cb(err)
+                    --[[
+I think we occasionally call Frame.from_stream when the socket does not
+yet have enough data, and so we fail to get
+                    ]]
+                    return "failed to get frame from socket"
+                end
+                print("!!! failed to get frame from socket: ", err)
+                goto continue
             end
             if frame:is_control() then
                 local control_type = frame.header.opcode.sub
@@ -215,6 +236,7 @@ function WebSocket:receive_loop()
                     frames_since_last_ping = 0
                 elseif control_type == 'close' then
                     if not self._close_frame_sent then
+                        print("sending close frame in response to one")
                         self:close(CloseCode.decode(frame.payload))
                     end
                     self.socket:close()
@@ -250,6 +272,7 @@ function WebSocket:receive_loop()
         end
 
         ::continue::
+        --socket.sleep(0.5)
     end
 end
 

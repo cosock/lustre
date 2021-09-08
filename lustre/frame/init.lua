@@ -7,10 +7,12 @@ local Frame = {}
 Frame.__index = Frame
 
 function Frame.from_stream(socket)
+  print(os.clock(), "pulling frame header off stream")
   local header, err = FrameHeader.from_stream(socket)
   if not header then
     return nil, err
   end
+  print(os.clock(), "pulling payload off stream ", header.length, " bytes")
   local payload, err = socket:receive(header.length) --num bytes
   if not payload then
     return nil, err

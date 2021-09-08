@@ -20,6 +20,7 @@ end
 ---@param res Response
 ---@return boolean
 ---@return err
+local utils = require "spec.utils"
 function Handshake:validate_accept(res)
     if not res then
         return false, "no response object"
@@ -28,9 +29,10 @@ function Handshake:validate_accept(res)
     if not headers then
         return false, "failed to parse handshake response headers: " .. err
     end
+    --print(utils.table_string(res))
     local accept = headers:get_one('Sec-Websocket-Accept')
     if not accept then
-        return false, 'Invalid request, no Sec-Websocket-Accept header'
+        return false, 'no Sec-Websocket-Accept header'
     end
     if not self.accept then
         self.accept = Key.build_accept_from(self.key)
