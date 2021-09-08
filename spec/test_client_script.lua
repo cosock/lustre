@@ -1,8 +1,7 @@
 local ws = require "lustre.ws"
-local socket = require 'socket'
-local timer = require 'cosock'.timer
-local utils = require "luncheon.print"
-local CloseCode = require "lustre.frame.close"
+local cosock = require "cosock"
+local socket = cosock.socket
+local CloseCode = require "lustre.frame.close".CloseCode
 
 
 --- Autobahn test framework echo server
@@ -20,18 +19,34 @@ local function green_light_echo()
         print("ERROR: ", err)
         return
     end
-
+    -- Note: we should probably put this inside of the client construction/connect
     local r, err = sock:connect(HOST, PORT)
     print("INFO: Connecting to tcp socket")
     if not r then
         print("ERROR: ", err)
         return
     end
-
+    local data = "asdf"
     local config = nil
-    local websocket = ws.client(sock, "/", config):register_message_cb(
+    local recvd = false
+    local websocket = ws.client(sock, "/", config)
+    websocket:register_message_cb(
         function (msg)
-            print("INFO: Received msg: ", msg.data)
+          recvd = true
+          print("INFO: Received msg: ", msg.data)
+          -- check the messages are in fact echo'd
+          assert(msg.data == data)
+          -- close the web socket
+          local close_code = CloseCode.normal()
+          local reason = "Because I want to!"
+            assert(websocket:close(close_code, reason))
+        end):register_error_cb(function(err)
+          recvd = true
+          -- try to close the websocket on our end
+          local close_code = CloseCode.normal()
+          websocket:close(close_code, err)
+          -- raise an error on errors
+          error(err)
         end)
 
     print("INFO: Connection websocket")
@@ -41,45 +56,18 @@ local function green_light_echo()
         return
     end
 
-    local data = "asdf"
+    
     print("INFO: Sending text ", data)
     local bytes, err = websocket:send_text(data)
     if err then
         print("ERROR: ", err)
         return
     end
-
-    local msg, err = websocket:receive()
-    if msg then
-        print("!!Received echo from echoserver: ", msg.data)
-    else
-        print("!!Failed to receive: ", err)
-        exit()
-    end
-
-    local close_code = CloseCode.normal()
-    local reason = "Because I want to!"
-    local err = websocket:close(close_code, reason)
-    if err then
-        print("!!Failed to close connection: ", err)
-        return
+    while not recvd do
+        socket.sleep(1)
     end
 end
 
-green_light_echo()
+cosock.spawn(green_light_echo, "green_light_echo")
 
-
---[[
---should this work with cosock locally? Probably
-local co = coroutine.create(green_light_echo)
-while not done do
-    if coroutine.status(co) == "suspended" then
-        print("**Coroutine resuming: ",
-              coroutine.resume(co))
-        
-    elseif coroutine.status(co) == "dead" then
-        print("**coroutine dead:")
-        done = true
-    end
-end
---]]
+cosock.run()
