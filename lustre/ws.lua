@@ -268,7 +268,7 @@ function WebSocket:receive_loop()
                 full_payload = table.concat(partial_frames)
                 partial_frames = {}
             end
-            if self.message_cb then self.message_cb(Message:new(full_payload)) end
+            if self.message_cb then self.message_cb(Message.new("text", full_payload)) end
         elseif recv[1] == self._rx then
             self._rx:recieve()
             --todo
