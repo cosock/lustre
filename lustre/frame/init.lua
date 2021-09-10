@@ -1,22 +1,30 @@
-local FrameHeader = require 'lustre.frame.frame_header'
-local OpCode = require 'lustre.frame.opcode'
-local CloseCode = require 'lustre.frame.close'.CloseCode
-local CloseFrame = require 'lustre.frame.close'.CloseFrame
+local FrameHeader = require "lustre.frame.frame_header"
+local OpCode = require "lustre.frame.opcode"
+local CloseCode = require "lustre.frame.close".CloseCode
+local CloseFrame = require "lustre.frame.close".CloseFrame
 
 local Frame = {}
 Frame.__index = Frame
 
+Frame.MAX_CONTROL_FRAME_LENGTH = 125
+
 function Frame.from_stream(socket)
-  print(os.clock(), "pulling frame header off stream")
   local header, err = FrameHeader.from_stream(socket)
   if not header then
     return nil, err
   end
-  print(os.clock(), "pulling payload off stream ", header.length, " bytes")
-  local payload, err = socket:receive(header.length) --num bytes
-  if not payload then
-    return nil, err
+  local payload, err, partial
+  if header.length > 0 then
+    print(os.clock(), "pulling payload off stream ", header.length, " bytes")
+    payload, err, partial = socket:receive(header.length) --num bytes
+    print(os.clock(), "pulled off bytes. err = ", err, " partial receive: [", partial,"]")
+    if not payload then
+      return nil, err
+    end
+  else
+    payload = ""
   end
+  
   return Frame.from_parts(header, payload, header:is_masked())
 end
 
@@ -41,13 +49,14 @@ end
 function Frame.pong(payload)
   return Frame.from_parts(
     FrameHeader.default()
+      :set_length(#(payload or ""))
       :set_opcode(OpCode.pong()),
-      payload or ''
+      payload or ""
   )
 end
 
 function Frame.close(close_code, reason)
-  local payload = ''
+  local payload = ""
   if close_code then
     payload = payload .. CloseFrame.from_parts(close_code, reason):encode()
   end
@@ -93,7 +102,7 @@ function Frame:is_final()
 end
 
 function Frame:is_control()
-  return self.header.opcode.type == 'control'
+  return self.header.opcode.type == "control"
 end
 
 local function seed_once()
@@ -124,9 +133,9 @@ end
 ---note: this applies the mask in place
 function Frame:apply_mask()
   if not self.header.mask then
-    return nil, 'No mask to apply'
+    return nil, "No mask to apply"
   end
-  local unmasked = ''
+  local unmasked = ""
   for i = 0, #self.payload - 1 do
     local byte = string.byte(self.payload, i + 1, i + 1)
     local char = byte ~ self.header.mask[(i % 4) + 1]
@@ -136,9 +145,7 @@ function Frame:apply_mask()
   self._masked_payload = not self._masked_payload
 end
 
---local utils = require "luncheon.print"
 function Frame:encode()
-  --print("Encoding frame: \n", utils.stringify_table(self))
   local ret = self.header:encode()
   if not self:payload_is_masked() then
     --print("applying mask")

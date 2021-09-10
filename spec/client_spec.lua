@@ -12,10 +12,12 @@ local cosock = require "cosock"
 local socket = cosock.socket
 local CloseCode = require "lustre.frame.close".CloseCode
 local Config = require "lustre.config"
+local Message = require "lustre.message"
 
 local HOST = "127.0.0.1"
 local PORT = 9001
 local case = 1
+local total_cases = 0
 
 local function echo_client()
   local sock, err = socket.tcp()
@@ -27,7 +29,14 @@ local function echo_client()
   case = case + 1
   websocket:register_message_cb(
   function (msg)
-    local err = websocket:send_text(msg.data)
+    local err
+    if msg.type == Message.TEXT then
+      print("echoing text")
+      err = websocket:send_text(msg.data)
+    else
+      print("echoing bytes") 
+      err = websocket:send_bytes(msg.data)
+    end
     if err then print("ECHOERROR") end
     local close_code = CloseCode.normal()
     local reason = ""
@@ -55,7 +64,29 @@ local function update_reports()
     print("ERR shouldn't have received msg: ", msg.data)
   end)
   websocket:register_error_cb(print)
-  print("INFO: Requesting report generation")
+  local success, err = websocket:connect(HOST, PORT)
+  if err then
+      assert(false, err)
+  end
+  local success, err = websocket:close()
+  if err then
+      assert(false, err)
+  end
+end
+
+local function get_num_test_cases()
+  local sock, err = socket.tcp()
+  if err then
+      assert(false, err)
+  end
+  local config = Config.default()
+  local websocket = ws.client(sock, "/getCaseCount", config)
+  websocket:register_message_cb(
+  function (msg)
+    print("Received total cases ", msg.data)
+    total_cases = tonumber(msg.data)
+  end)
+  websocket:register_error_cb(print)
   local success, err = websocket:connect(HOST, PORT)
   if err then
       assert(false, err)
@@ -68,81 +99,24 @@ local function update_reports()
 end
 
 describe("autobahn test cases", function()
-  describe("client text handling", function()
-    it("1.1.1", function()
+  it("run", function()
+    print("*********************************************************")
+    print("Getting number of cases")
+    print("*********************************************************")
+    cosock.spawn(get_num_test_cases, "get_num_test_cases")
+    cosock.run()
+    for i=1, total_cases do
+      print("*********************************************************")
+      print("case: ", i)
+      print("*********************************************************")
       cosock.spawn(echo_client, "echo")
       cosock.run()
-      print("finished 1")
-    end)
-    it("1.1.2", function()
-      cosock.spawn(echo_client, "echo")
-      cosock.run()
-      print("finished 2")
-    end)
-    it("1.1.3", function()
-      cosock.spawn(echo_client, "echo")
-      cosock.run()
-      print("finished 3")
-    end)
-    it("1.1.4", function()
-      cosock.spawn(echo_client, "echo")
-      cosock.run()
-      print("finished 4")
-    end)
-    it("1.1.5", function()
-      cosock.spawn(echo_client, "echo")
-      cosock.run()
-      print("finished 5")
-    end)
-    it("1.1.6", function()
-      cosock.spawn(echo_client, "echo")
-      cosock.run()
-      print("finished 6")
-    end)
-    it("1.1.7", function()
-      cosock.spawn(echo_client, "echo")
-      cosock.run()
-      print("finished 7")
-    end)
-    it("1.1.8", function()
-      cosock.spawn(echo_client, "echo")
-      cosock.run()
-      print("finished 8")
-    end)
-  end)
-  describe("ping/pong handling", function()
-    it("2.1", function()
-      cosock.spawn(echo_client, "echo")
-      cosock.run()
-      print("finished 1")
-    end)
-    it("2.2", function()
-      cosock.spawn(echo_client, "echo")
-      cosock.run()
-      print("finished 2")
-    end)
-    it("2.3", function()
-      cosock.spawn(echo_client, "echo")
-      cosock.run()
-      print("finished 3")
-    end)
-    it("2.4", function()
-      cosock.spawn(echo_client, "echo")
-      cosock.run()
-      print("finished 4")
-    end)
-    it("2.5", function()
-      cosock.spawn(echo_client, "echo")
-      cosock.run()
-      print("finished 5")
-    end)
-    it("2.6", function()
-      cosock.spawn(echo_client, "echo")
-      cosock.run()
-      print("finished 6")
-    end)
+    end
+    print("*********************************************************")
+    print("Updating reports")
+    print("*********************************************************")
+    cosock.spawn(update_reports, "report_update")
+    cosock.run()
   end)
 end)
 
-cosock.spawn(update_reports, "report_update")
-cosock.run()

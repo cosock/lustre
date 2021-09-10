@@ -1,7 +1,7 @@
 local OpCode = require 'lustre.frame.opcode'
 local opcode = require "lustre.frame.opcode"
 local U16_MAX = 0xFFFF
-
+local utils = require "spec.utils"
 ---@class FrameHeader
 ---@field public fin boolean is finished
 ---@field public rsv1 boolean
@@ -87,14 +87,14 @@ end
 local function decode_len_stream(byte, socket)
   local len_byte = byte & 0x7f
   if len_byte < 126 then
-      return len_byte
+      return len_byte, 0
   end
   local extra_bytes = {}
   if len_byte == 126 then
     local next_2_bytes = assert(socket:receive(2))
     extra_bytes = table.pack(string.byte(next_2_bytes, 1, 2))
     assert(#extra_bytes >= 2, 'Too few length bytes')
-    return (extra_bytes[1] << 8) | extra_bytes[2]
+    return (extra_bytes[1] << 8) | extra_bytes[2], 2
   elseif len_byte == 127 then
       local bytes = assert(socket:receive(8))
       extra_bytes = table.pack(string.byte(bytes, 1, 8))
@@ -102,9 +102,9 @@ local function decode_len_stream(byte, socket)
       local u64 = decode_uint(extra_bytes)
       --Most significant bit means we found an invalid value, return nil
       if u64 < 0 then
-        return nil
+        return nil, 8
       end
-      return u64
+      return u64, 8
   end
 end
 
@@ -171,12 +171,12 @@ local function decode_header_stream(socket)
   local rsv3 = first_byte & 0x10 ~= 0
   local opcode = OpCode.decode(first_byte & 0x0f)
   local masked = (second_byte & 0x80) ~= 0
-  local length = decode_len_stream(second_byte, socket)
+  local length, length_length = decode_len_stream(second_byte, socket)
   local mask
   if masked then
       mask = decode_mask_stream(socket)
   end
-  return {
+  local res = {
       fin = fin,
       rsv1 = rsv1,
       rsv2 = rsv2,
@@ -184,9 +184,12 @@ local function decode_header_stream(socket)
       opcode = opcode,
       masked = masked,
       length = length,
+      length_length = length_length,
       mask_length = (mask and 4) or 0,
       mask = mask,
   }
+  print(os.clock(), "pulled header from stream: ", utils.table_string(res))
+  return res
 end
 
 function FrameHeader.from_stream(socket)
@@ -244,7 +247,7 @@ function FrameHeader:encode()
   bytes[1] = bytes[1] | self.opcode:encode()
   if self.mask then
     bytes[2] = bytes[2] | 0x80
-  end
+  end  
   if self.length_length == 0 then
     bytes[2] = bytes[2] | self.length
   else
@@ -260,6 +263,7 @@ function FrameHeader:encode()
   for _, byte in ipairs(self.mask or {}) do
     table.insert(bytes, byte)
   end
+  --print("encoding frame header: \n", utils.table_string(bytes))
   return string.char(table.unpack(bytes))
 end
 
@@ -336,7 +340,7 @@ end
 function FrameHeader:set_length(value)
   if value < 126 then
     self.length_length = 0
-  elseif value < U16_MAX then
+  elseif value <= U16_MAX then
     self.length_length = 2
   else
     self.length_length = 8

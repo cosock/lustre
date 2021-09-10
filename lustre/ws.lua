@@ -12,7 +12,6 @@ local CloseCode = require 'lustre.frame.close'.CloseCode
 local Message = require "lustre.message"
 
 local utils = require "spec.utils"
-
 --TODO cleanup print statements
 
 ---@class WebSocket
@@ -87,6 +86,9 @@ function WebSocket:send_text(text)
     local data_idx = 1
     local frames_sent = 0
     local total_bytes
+    if self._close_frame_sent then
+        return "currently closing connection"
+    end
     while data_idx <= text:len() + 1 do
         local header = FrameHeader.default()
         local payload = ""
@@ -104,6 +106,7 @@ function WebSocket:send_text(text)
         print(os.clock(), " sending frame: ", utils.table_string(frame))
         local bytes, err = self.socket:send(frame:encode()) --todo do we get num bytes sent returned or does it return when all the bytes were sent?
         --TODO send frame over cosock channel to be sent on socket from receive loop
+        print("sent ", bytes, " bytes on the socket")
         if not bytes then
             --print("failed to send frame on socket: "..err)
             return err
@@ -209,7 +212,6 @@ function WebSocket:receive_loop()
             goto continue
         end
         if recv[1] == self.socket then
-            print(os.clock(), "ready to get frame from stream")
             local frame, err = Frame.from_stream(self.socket)
             print(os.clock(), " receiving frame: ", utils.table_string(frame))
             if not frame then
@@ -218,10 +220,6 @@ function WebSocket:receive_loop()
                 elseif self.error_cb then
                     print("errcb")
                     self.error_cb(err)
-                    --[[
-I think we occasionally call Frame.from_stream when the socket does not
-yet have enough data, and so we fail to get
-                    ]]
                     return "failed to get frame from socket"
                 end
                 print("!!! failed to get frame from socket: ", err)
@@ -229,7 +227,11 @@ yet have enough data, and so we fail to get
             end
             if frame:is_control() then
                 local control_type = frame.header.opcode.sub
+                if frame:len() > Frame.MAX_CONTROL_FRAME_LENGTH then
+                    self:close(CloseCode.protocol())
+                end
                 if control_type == 'ping' then
+                    print(os.clock(), "received ping with payload: ", frame.payload)
                     self.socket:send(Frame.pong(frame.payload):set_mask():encode())
                 elseif control_type == 'pong' then
                     pending_pong = false
@@ -252,6 +254,7 @@ yet have enough data, and so we fail to get
                 end
             end
             if not frame:is_final() then
+                print("not final frame received")
                 received_bytes = received_bytes + frame:payload_len()
                 --Dont build up a message payload that is bigger than max message size
                 if received_bytes <= self.config:max_message_size() then
