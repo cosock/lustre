@@ -121,7 +121,37 @@ end
 ---@return bytes_sent number
 ---@return err string|nil
 function WebSocket:send_bytes(bytes)
-    return nil, "not implmented"
+    local data_idx = 1
+    local frames_sent = 0
+    local total_bytes
+    if self._close_frame_sent then
+        return "currently closing connection"
+    end
+    while data_idx <= bytes:len() + 1 do
+        local header = FrameHeader.default()
+        local payload = ""
+        if (bytes:len() - data_idx + 1) > self.config._max_frame_size then
+            header.set_fin(false)
+        end
+        payload = string.sub(bytes, data_idx, data_idx + self.config._max_frame_size)
+        header:set_opcode(OpCode.binary())
+        header:set_length(#payload)
+        local frame = Frame.from_parts(
+            header,
+            payload
+        )
+        frame:set_mask() --todo handle client vs server
+        print(os.clock(), " sending frame: ", utils.table_string(frame))
+        local sent_bytes, err = self.socket:send(frame:encode()) --todo do we get num bytes sent returned or does it return when all the bytes were sent?
+        --TODO send frame over cosock channel to be sent on socket from receive loop
+        print("sent ", sent_bytes, " bytes on the socket")
+        if not sent_bytes then
+            --print("failed to send frame on socket: "..err)
+            return err
+        end
+        data_idx = data_idx + sent_bytes
+        frames_sent = frames_sent + 1
+    end
 end
 
 ---@param message Message
@@ -212,6 +242,7 @@ function WebSocket:receive_loop()
             goto continue
         end
         if recv[1] == self.socket then
+            local msg_type
             local frame, err = Frame.from_stream(self.socket)
             print(os.clock(), " receiving frame: ", utils.table_string(frame))
             if not frame then
@@ -245,6 +276,8 @@ function WebSocket:receive_loop()
                     return
                 end
                 goto continue
+            else
+                msg_type = frame.header.opcode.sub
             end
             if pending_pong then
                 frames_since_last_ping = frames_since_last_ping + 1
@@ -268,7 +301,9 @@ function WebSocket:receive_loop()
                 full_payload = table.concat(partial_frames)
                 partial_frames = {}
             end
-            if self.message_cb then self.message_cb(Message.new("text", full_payload)) end
+            if self.message_cb then
+                self.message_cb(Message.new(msg_type, full_payload))
+            end
         elseif recv[1] == self._rx then
             self._rx:recieve()
             --todo
