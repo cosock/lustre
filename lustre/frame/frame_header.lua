@@ -1,7 +1,7 @@
 local OpCode = require 'lustre.frame.opcode'
 local opcode = require "lustre.frame.opcode"
 local U16_MAX = 0xFFFF
-local utils = require "spec.utils"
+
 ---@class FrameHeader
 ---@field public fin boolean is finished
 ---@field public rsv1 boolean
@@ -176,7 +176,7 @@ local function decode_header_stream(socket)
   if masked then
       mask = decode_mask_stream(socket)
   end
-  local res = {
+  return {
       fin = fin,
       rsv1 = rsv1,
       rsv2 = rsv2,
@@ -188,8 +188,6 @@ local function decode_header_stream(socket)
       mask_length = (mask and 4) or 0,
       mask = mask,
   }
-  print(os.clock(), "pulled header from stream: ", utils.table_string(res))
-  return res
 end
 
 function FrameHeader.from_stream(socket)
@@ -263,7 +261,6 @@ function FrameHeader:encode()
   for _, byte in ipairs(self.mask or {}) do
     table.insert(bytes, byte)
   end
-  --print("encoding frame header: \n", utils.table_string(bytes))
   return string.char(table.unpack(bytes))
 end
 

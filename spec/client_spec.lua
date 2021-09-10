@@ -31,10 +31,8 @@ local function echo_client()
   function (msg)
     local err
     if msg.type == Message.TEXT then
-      print("echoing text")
       err = websocket:send_text(msg.data)
     else
-      print("echoing bytes") 
       err = websocket:send_bytes(msg.data)
     end
     if err then print("ECHOERROR") end
@@ -44,9 +42,7 @@ local function echo_client()
     --assert(websocket:close(close_code, reason))
   end):register_error_cb(print)
   print("INFO: Connecting websocket")
-  print(os.clock(), " connect: ")
   local success, err = websocket:connect(HOST, PORT)
-  print(os.clock(), "end connect: ")
   if err then
       assert(false, err)
   end

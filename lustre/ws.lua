@@ -103,18 +103,14 @@ function WebSocket:send_text(text)
             payload
         )
         frame:set_mask() --todo handle client vs server
-        print(os.clock(), " sending frame: ", utils.table_string(frame))
         local bytes, err = self.socket:send(frame:encode()) --todo do we get num bytes sent returned or does it return when all the bytes were sent?
         --TODO send frame over cosock channel to be sent on socket from receive loop
-        print("sent ", bytes, " bytes on the socket")
         if not bytes then
-            --print("failed to send frame on socket: "..err)
             return err
         end
         data_idx = data_idx + bytes
         frames_sent = frames_sent + 1
     end
-    --print("sent "..frames_sent.." frames.")
 end
 
 ---@param bytes string 
@@ -141,12 +137,9 @@ function WebSocket:send_bytes(bytes)
             payload
         )
         frame:set_mask() --todo handle client vs server
-        print(os.clock(), " sending frame: ", utils.table_string(frame))
         local sent_bytes, err = self.socket:send(frame:encode()) --todo do we get num bytes sent returned or does it return when all the bytes were sent?
         --TODO send frame over cosock channel to be sent on socket from receive loop
-        print("sent ", sent_bytes, " bytes on the socket")
         if not sent_bytes then
-            --print("failed to send frame on socket: "..err)
             return err
         end
         data_idx = data_idx + sent_bytes
@@ -190,11 +183,9 @@ function WebSocket:connect(host, port)
         -- it currently only sends the last value added
         req:add_header("Sec-Websocket-Protocol", prot)
     end
-    --print("send req: \n", req:serialize())
     local s, err = req:send()
     if not s then
-        print("Handshake request failure: ", err)
-        return err
+        return "handshake request failure: "..err
     end
     local res, err = Response.tcp_source(self.socket)
     if not res then
@@ -216,7 +207,6 @@ end
 ---@param reason string
 ---@return err string|nil
 function WebSocket:close(close_code, reason)
-    print("closing websocket")
     local close_frame = Frame.close(close_code, reason):set_mask()
     local sent, err = self.socket:send(close_frame:encode())
     if not sent then return nil, err end
@@ -232,7 +222,6 @@ function WebSocket:receive_loop()
     local frames_since_last_ping = 0
     local pending_pong = false
     while true do
-        print(os.clock(), "tick: ")
         local recv, _, err = socket.select({self.socket, self._rx}, nil, self.config._keep_alive)
         if not recv then
             if err == "timeout" then
@@ -244,32 +233,31 @@ function WebSocket:receive_loop()
         if recv[1] == self.socket then
             local msg_type
             local frame, err = Frame.from_stream(self.socket)
-            print(os.clock(), " receiving frame: ", utils.table_string(frame))
             if not frame then
+                --TODO this error case is a little weird, and I dont think it is handled right
                 if self._close_frame_sent then
                     return
                 elseif self.error_cb then
-                    print("errcb")
                     self.error_cb(err)
                     return "failed to get frame from socket"
                 end
-                print("!!! failed to get frame from socket: ", err)
                 goto continue
             end
             if frame:is_control() then
                 local control_type = frame.header.opcode.sub
-                if frame:len() > Frame.MAX_CONTROL_FRAME_LENGTH then
+                if frame:payload_len() > Frame.MAX_CONTROL_FRAME_LENGTH then
                     self:close(CloseCode.protocol())
+                    self.socket:close()
+                    return
                 end
                 if control_type == 'ping' then
-                    print(os.clock(), "received ping with payload: ", frame.payload)
-                    self.socket:send(Frame.pong(frame.payload):set_mask():encode())
+                    local fm = Frame.pong(frame.payload):set_mask()
+                    self.socket:send(fm:encode())
                 elseif control_type == 'pong' then
-                    pending_pong = false
+                    pending_pong = false --TODO this functionality is not tested by the test framework
                     frames_since_last_ping = 0
                 elseif control_type == 'close' then
                     if not self._close_frame_sent then
-                        print("sending close frame in response to one")
                         self:close(CloseCode.decode(frame.payload))
                     end
                     self.socket:close()
@@ -283,11 +271,10 @@ function WebSocket:receive_loop()
                 frames_since_last_ping = frames_since_last_ping + 1
                 if frames_since_last_ping > self.config._max_frames_without_pong then
                     frames_since_last_ping = 0
-                    self:close(CloseCode.policy(), "no pong after ping")
+                    local err = self:close(CloseCode.policy(), "no pong after ping")
                 end
             end
             if not frame:is_final() then
-                print("not final frame received")
                 received_bytes = received_bytes + frame:payload_len()
                 --Dont build up a message payload that is bigger than max message size
                 if received_bytes <= self.config:max_message_size() then

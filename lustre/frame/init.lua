@@ -15,9 +15,7 @@ function Frame.from_stream(socket)
   end
   local payload, err, partial
   if header.length > 0 then
-    print(os.clock(), "pulling payload off stream ", header.length, " bytes")
     payload, err, partial = socket:receive(header.length) --num bytes
-    print(os.clock(), "pulled off bytes. err = ", err, " partial receive: [", partial,"]")
     if not payload then
       return nil, err
     end
@@ -41,18 +39,20 @@ end
 function Frame.ping(payload)
   return Frame.from_parts(
     FrameHeader.default()
+      :set_length(#(payload or ""))
       :set_opcode(OpCode.ping()),
       payload or ''
   )
 end
 
 function Frame.pong(payload)
-  return Frame.from_parts(
+  local fm = Frame.from_parts(
     FrameHeader.default()
       :set_length(#(payload or ""))
       :set_opcode(OpCode.pong()),
       payload or ""
   )
+  return fm
 end
 
 function Frame.close(close_code, reason)
@@ -148,7 +148,6 @@ end
 function Frame:encode()
   local ret = self.header:encode()
   if not self:payload_is_masked() then
-    --print("applying mask")
     self:apply_mask()
     ret = ret .. self.payload
     self:apply_mask() --undo masking
