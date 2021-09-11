@@ -222,11 +222,13 @@ end
 ---@return message Message
 ---@return err string|nil
 --TODO break out some helper functions for this...
+--TODO confirm the socket lifecycle throughout the receive loop: the receive loop ends when the socket is closed
 function WebSocket:receive_loop()
     local partial_frames = {}
     local received_bytes = 0
     local frames_since_last_ping = 0
     local pending_pong = false
+    local multiframe_message = false 
     local msg_type
     while true do
         local recv, _, err = socket.select({self.socket, self._rx}, nil, self.config._keep_alive)
@@ -259,13 +261,19 @@ function WebSocket:receive_loop()
                 local control_type = frame.header.opcode.sub
                 if frame:payload_len() > Frame.MAX_CONTROL_FRAME_LENGTH then
                     self:close(CloseCode.protocol())
-                    self.socket:close()
+                    self.socket:close() -- probably shouldn't preemtively do this.
                     return
                 end
                 if control_type == 'ping' then
+                    if not frame:is_final() then
+                        self:close(CloseCode.protocol())
+                    end
                     local fm = Frame.pong(frame.payload):set_mask()
                     self.socket:send(fm:encode())
                 elseif control_type == 'pong' then
+                    if not frame:is_final() then
+                        self:close(CloseCode.protocol())
+                    end
                     pending_pong = false --TODO this functionality is not tested by the test framework
                     frames_since_last_ping = 0
                 elseif control_type == 'close' then
@@ -290,16 +298,33 @@ function WebSocket:receive_loop()
             end
 
 
-            --handle continuation frame
+            --handle fragmentation
+            print("!!!!!!!!!multiframe_message ", multiframe_message)
             if frame.header.opcode.sub == 'text' then
-                print("testtextextextextextexte")
                 msg_type = "text"
+                if multiframe_message then
+                    self:close(CloseCode.protocol(), "expected "..msg_type.."continuation frame")
+                    goto continue
+                end
+                if not frame:is_final() then
+                    multiframe_message = true
+                end
             elseif frame.header.opcode.sub == 'binary' then
-                print("binbinbibnibnbibnibnbi")
                 msg_type = "binary"
+                if multiframe_message then
+                    self:close(CloseCode.protocol(), "expected "..msg_type.."continuation frame")
+                    goto continue
+                end
+                if not frame:is_final() then
+                    multiframe_message = true
+                end
+            elseif frame.header.opcode.sub   == 'continue' and not multiframe_message then
+                self:close(CloseCode.protocol(), "unexpected continue frame")
+                goto continue
             end
+            --aggregate payloads
             if not frame:is_final() then --todo and we are continuing something
-            print("CONTINUATION FRAME")
+                multiframe_message = true
                 received_bytes = received_bytes + frame:payload_len()
                 --Dont build up a message payload that is bigger than max message size
                 print("\treceived_bytes: ", received_bytes, "self.config:max_message_size(): ", self.config.max_message_size)
@@ -308,6 +333,8 @@ function WebSocket:receive_loop()
                     table.insert(partial_frames, frame.payload)
                 end
                 goto continue
+            else
+                multiframe_message = false
             end
 
 
@@ -325,6 +352,7 @@ function WebSocket:receive_loop()
         elseif recv[1] == self._rx then
             self._rx:recieve()
             --todo
+            --we could receive a message from the close api to close the socket at the appropriate time
         end
 
         ::continue::
