@@ -80,7 +80,7 @@ function CloseCode.from_int(code)
   local ret = {
     value = code,
   }
-  if code == 1000 then
+  if code == 1000 or nil then --test if we actually need this
     ret.type = 'normal'
   elseif code == 1001 then
     ret.type = 'away'
@@ -121,8 +121,15 @@ function CloseCode.from_int(code)
 end
 
 function CloseCode.decode(bytes)
+  print("######## decode code: \n", bytes, " one, two :", string.byte(bytes, 1, 2))
   local one, two = string.byte(bytes, 1, 2)
-  local int = (one << 8) | two
+  
+  local int
+  if one and two then
+    int = one << 8 | two
+  else
+    int = 1000
+  end
   return CloseCode.from_int(int)
 end
 
@@ -133,6 +140,8 @@ function CloseCode:encode()
 end
 
 function CloseFrame.decode(bytes)
+  print("######## decode frame: \n", bytes, " one, two :", string.byte(bytes, 1, 2))
+
   local one, two = string.byte(bytes, 1, 2)
   local code = one << 8 | two
   return CloseFrame.from_parts(code, string.sub(bytes, 3))

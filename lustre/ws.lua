@@ -89,6 +89,7 @@ function WebSocket:send_text(text)
     if self._close_frame_sent then
         return "currently closing connection"
     end
+    print("tring to send??")
     while data_idx <= text:len() + 1 do
         local header = FrameHeader.default()
         local payload = ""
@@ -103,6 +104,7 @@ function WebSocket:send_text(text)
             payload
         )
         frame:set_mask() --todo handle client vs server
+        print("SENDING TEXT FRAME: \n", utils.table_string(frame), "\n\n")
         local bytes, err = self.socket:send(frame:encode()) --todo do we get num bytes sent returned or does it return when all the bytes were sent?
         --TODO send frame over cosock channel to be sent on socket from receive loop
         if not bytes then
@@ -111,6 +113,7 @@ function WebSocket:send_text(text)
         data_idx = data_idx + bytes
         frames_sent = frames_sent + 1
     end
+    print("fingished senign")
 end
 
 ---@param bytes string 
@@ -210,17 +213,21 @@ function WebSocket:close(close_code, reason)
     local close_frame = Frame.close(close_code, reason):set_mask()
     local sent, err = self.socket:send(close_frame:encode())
     if not sent then return nil, err end
+    print("SENT CLOSE FRAME: \n", utils.table_string(close_frame), "\n\n")
     self._close_frame_sent = true
+    if self.close_cb then self.close_cb(reason) end
     return 1
 end
 
 ---@return message Message
 ---@return err string|nil
+--TODO break out some helper functions for this...
 function WebSocket:receive_loop()
     local partial_frames = {}
     local received_bytes = 0
     local frames_since_last_ping = 0
     local pending_pong = false
+    local msg_type
     while true do
         local recv, _, err = socket.select({self.socket, self._rx}, nil, self.config._keep_alive)
         if not recv then
@@ -231,12 +238,13 @@ function WebSocket:receive_loop()
             goto continue
         end
         if recv[1] == self.socket then
-            local msg_type
             local frame, err = Frame.from_stream(self.socket)
             if not frame then
+                print("!!!!!!!!!!!!!! attempted to receive, but no frame")
                 if self._close_frame_sent then
                     --TODO this error case is a little weird, but it seems
                     -- needed atm to ensure the loop ends when the server initates a close
+                    print("!@#$!@#$!@#$!@#$!@#$!$@#!@#$!@#$ weird error case exit loop: \n", self.socket:getpeername())
                     return
                 elseif err == "invalid opcode" or err == "invalid rsv bit" then
                     self:close(CloseCode.protocol(), err)
@@ -246,6 +254,7 @@ function WebSocket:receive_loop()
                 end
                 goto continue
             end
+            print("RECEIVE FRAME: \n", utils.table_string(frame), "\n\n")
             if frame:is_control() then
                 local control_type = frame.header.opcode.sub
                 if frame:payload_len() > Frame.MAX_CONTROL_FRAME_LENGTH then
@@ -267,9 +276,11 @@ function WebSocket:receive_loop()
                     return
                 end
                 goto continue
-            else
-                msg_type = frame.header.opcode.sub
             end
+
+            --should we close because we have been waiting to long for a ping
+            -- we might not need to do this...it doesn't seem like it was prioritized
+            -- with a test case in autobahn
             if pending_pong then
                 frames_since_last_ping = frames_since_last_ping + 1
                 if frames_since_last_ping > self.config._max_frames_without_pong then
@@ -277,16 +288,33 @@ function WebSocket:receive_loop()
                     local err = self:close(CloseCode.policy(), "no pong after ping")
                 end
             end
-            if not frame:is_final() then
+
+
+            --handle continuation frame
+            if frame.header.opcode.sub == 'text' then
+                print("testtextextextextextexte")
+                msg_type = "text"
+            elseif frame.header.opcode.sub == 'binary' then
+                print("binbinbibnibnbibnibnbi")
+                msg_type = "binary"
+            end
+            if not frame:is_final() then --todo and we are continuing something
+            print("CONTINUATION FRAME")
                 received_bytes = received_bytes + frame:payload_len()
                 --Dont build up a message payload that is bigger than max message size
-                if received_bytes <= self.config:max_message_size() then
+                print("\treceived_bytes: ", received_bytes, "self.config:max_message_size(): ", self.config.max_message_size)
+                if received_bytes <= self.config.max_message_size then
+                    print("\tinserting into the payload.\n")
                     table.insert(partial_frames, frame.payload)
                 end
                 goto continue
             end
+
+
+            --coalesce frame payloads into single message payload
             local full_payload = frame.payload
             if next(partial_frames) then
+                print("THERE shoudl be partial frames: \n\t", utils.table_string(partial_frames))
                 table.insert(partial_frames, frame.payload)
                 full_payload = table.concat(partial_frames)
                 partial_frames = {}

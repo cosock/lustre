@@ -30,7 +30,9 @@ local function echo_client()
   websocket:register_message_cb(
   function (msg)
     local err
+    print("message callback: ", msg.data, " ", msg.type)
     if msg.type == Message.TEXT then
+      print("!!!!!!!!!!! echoing message")
       err = websocket:send_text(msg.data)
     else
       err = websocket:send_bytes(msg.data)

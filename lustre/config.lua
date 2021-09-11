@@ -19,7 +19,7 @@ function Config.default()
     return setmetatable({
         _max_queue_size = nil,
         _max_frame_size = DEFAULT_MAX_FRAME,
-        _max_message_size = DEFAULT_MAX_MESSAGE,
+        max_message_size = DEFAULT_MAX_MESSAGE,
         _max_frames_without_pong = DEFAULT_MAX_FRAMES_WITHOUT_PONG,
         _accept_unmasked_frames = false,
         extensions = {},
