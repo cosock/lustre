@@ -234,9 +234,12 @@ function WebSocket:receive_loop()
             local msg_type
             local frame, err = Frame.from_stream(self.socket)
             if not frame then
-                --TODO this error case is a little weird, and I dont think it is handled right
                 if self._close_frame_sent then
+                    --TODO this error case is a little weird, but it seems
+                    -- needed atm to ensure the loop ends when the server initates a close
                     return
+                elseif err == "invalid opcode" or err == "invalid rsv bit" then
+                    self:close(CloseCode.protocol(), err)
                 elseif self.error_cb then
                     self.error_cb(err)
                     return "failed to get frame from socket"

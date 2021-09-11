@@ -23,6 +23,14 @@ function Frame.from_stream(socket)
     payload = ""
   end
   
+  if header.opcode.sub == 'reserved' then
+    return nil, "invalid opcode"
+  end
+  if header.rsv1 or header.rsv2 or header.rsv3 then
+    -- These bits can be used if an extension has been negotiated, but
+    -- extension support for the lib is not yet functionally tested.
+    return nil, "invalid rsv bit"
+  end
   return Frame.from_parts(header, payload, header:is_masked())
 end
 

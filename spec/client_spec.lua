@@ -36,11 +36,11 @@ local function echo_client()
       err = websocket:send_bytes(msg.data)
     end
     if err then print("ECHOERROR") end
-    local close_code = CloseCode.normal()
-    local reason = ""
-    --print("CLOSING")
-    --assert(websocket:close(close_code, reason))
-  end):register_error_cb(print)
+  end):register_error_cb(function(err)
+    print("ERROR: ", err)
+  end):register_close_cb(function(arg)
+    print("INFO: Connection closed. ", arg)
+  end)
   print("INFO: Connecting websocket")
   local success, err = websocket:connect(HOST, PORT)
   if err then
