@@ -1,11 +1,19 @@
---- There must be an autobahn fuzzing server running with the following config
---- to allow for the tests to pass.
+--- There must be an autobahn fuzzing server running to allow for the tests to pass.
 ---
---- `docker run -it -p 9001:9001 -v "/home/parallels/lustre/spec:/config" crossbario/autobahn-testsuite wstest -d -m fuzzingserver -s /config/fuzzingserver.json`
 --[[
-TODO config
-TODO docker start cmd
-]]
+Start the autobahn test container
+```
+docker run -it -p 9001:9001 \
+    -v "/home/parallels/lustre/spec/config:/config" \
+    -v "/home/parallels/lustre/spec/reports:/reports" \
+    crossbario/autobahn-testsuite \
+    wstest -d -m fuzzingserver -s /config/fuzzingserver.json
+```
+Run the test cases
+```
+busted /path/to/lustre/spec/client_spec.lua
+```
+--]]
 
 local ws = require "lustre.ws"
 local cosock = require "cosock"
@@ -30,9 +38,7 @@ local function echo_client()
   websocket:register_message_cb(
   function (msg)
     local err
-    print("message callback: ", msg.data, " ", msg.type)
     if msg.type == Message.TEXT then
-      print("!!!!!!!!!!! echoing message")
       err = websocket:send_text(msg.data)
     else
       err = websocket:send_bytes(msg.data)

@@ -121,7 +121,6 @@ function CloseCode.from_int(code)
 end
 
 function CloseCode.decode(bytes)
-  print("######## decode code: \n", bytes, " one, two :", string.byte(bytes, 1, 2))
   local one, two = string.byte(bytes, 1, 2)
   
   local int
@@ -140,8 +139,6 @@ function CloseCode:encode()
 end
 
 function CloseFrame.decode(bytes)
-  print("######## decode frame: \n", bytes, " one, two :", string.byte(bytes, 1, 2))
-
   local one, two = string.byte(bytes, 1, 2)
   local code = one << 8 | two
   return CloseFrame.from_parts(code, string.sub(bytes, 3))

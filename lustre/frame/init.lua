@@ -15,6 +15,7 @@ function Frame.from_stream(socket)
   end
   local payload, err, partial
   if header.length > 0 then
+    --TODO receive in chunks if header.length is too big
     payload, err, partial = socket:receive(header.length) --num bytes
     if not payload then
       return nil, err

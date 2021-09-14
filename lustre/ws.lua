@@ -105,7 +105,7 @@ function WebSocket:send_text(text)
         )
         frame:set_mask() --todo handle client vs server
         print("SENDING TEXT FRAME: \n", utils.table_string(frame), "\n\n")
-        local bytes, err = self.socket:send(frame:encode()) --todo do we get num bytes sent returned or does it return when all the bytes were sent?
+        local bytes, err = self.socket:send(frame:encode()) 
         --TODO send frame over cosock channel to be sent on socket from receive loop
         if not bytes then
             return err
@@ -139,8 +139,9 @@ function WebSocket:send_bytes(bytes)
             header,
             payload
         )
-        frame:set_mask() --todo handle client vs server
-        local sent_bytes, err = self.socket:send(frame:encode()) --todo do we get num bytes sent returned or does it return when all the bytes were sent?
+        frame:set_mask() --TODO handle client vs server
+        print("SENDING BINARY FRAME: \n", utils.table_string(frame), "\n\n")
+        local sent_bytes, err = self.socket:send(frame:encode())
         --TODO send frame over cosock channel to be sent on socket from receive loop
         if not sent_bytes then
             return err
@@ -166,8 +167,6 @@ function WebSocket:connect(host, port)
         return nil, "missing host or port"
     end
 
-    -- open socket
-    --TODO what happens if the socket is already connected? 
     local r, err = self.socket:connect(host, port)
     if not r then
         return nil, "socket connect failure: "..err
@@ -242,11 +241,10 @@ function WebSocket:receive_loop()
         if recv[1] == self.socket then
             local frame, err = Frame.from_stream(self.socket)
             if not frame then
-                print("!!!!!!!!!!!!!! attempted to receive, but no frame")
                 if self._close_frame_sent then
                     --TODO this error case is a little weird, but it seems
                     -- needed atm to ensure the loop ends when the server initates a close
-                    print("!@#$!@#$!@#$!@#$!@#$!$@#!@#$!@#$ weird error case exit loop: \n", self.socket:getpeername())
+                    print("weird error case exit loop: \n", self.socket:getpeername())
                     return
                 elseif err == "invalid opcode" or err == "invalid rsv bit" then
                     self:close(CloseCode.protocol(), err)
@@ -261,7 +259,6 @@ function WebSocket:receive_loop()
                 local control_type = frame.header.opcode.sub
                 if frame:payload_len() > Frame.MAX_CONTROL_FRAME_LENGTH then
                     self:close(CloseCode.protocol())
-                    self.socket:close() -- probably shouldn't preemtively do this.
                     return
                 end
                 if control_type == 'ping' then
@@ -286,7 +283,7 @@ function WebSocket:receive_loop()
                 goto continue
             end
 
-            --should we close because we have been waiting to long for a ping
+            --should we close because we have been waiting to long for a ping?
             -- we might not need to do this...it doesn't seem like it was prioritized
             -- with a test case in autobahn
             if pending_pong then
@@ -299,10 +296,9 @@ function WebSocket:receive_loop()
 
 
             --handle fragmentation
-            print("!!!!!!!!!multiframe_message ", multiframe_message)
             if frame.header.opcode.sub == 'text' then
                 msg_type = "text"
-                if multiframe_message then
+                if multiframe_message then --we expected a continuation message
                     self:close(CloseCode.protocol(), "expected "..msg_type.."continuation frame")
                     goto continue
                 end
@@ -324,12 +320,9 @@ function WebSocket:receive_loop()
             end
             --aggregate payloads
             if not frame:is_final() then --todo and we are continuing something
-                multiframe_message = true
                 received_bytes = received_bytes + frame:payload_len()
                 --Dont build up a message payload that is bigger than max message size
-                print("\treceived_bytes: ", received_bytes, "self.config:max_message_size(): ", self.config.max_message_size)
                 if received_bytes <= self.config.max_message_size then
-                    print("\tinserting into the payload.\n")
                     table.insert(partial_frames, frame.payload)
                 end
                 goto continue
@@ -341,7 +334,6 @@ function WebSocket:receive_loop()
             --coalesce frame payloads into single message payload
             local full_payload = frame.payload
             if next(partial_frames) then
-                print("THERE shoudl be partial frames: \n\t", utils.table_string(partial_frames))
                 table.insert(partial_frames, frame.payload)
                 full_payload = table.concat(partial_frames)
                 partial_frames = {}
@@ -351,12 +343,11 @@ function WebSocket:receive_loop()
             end
         elseif recv[1] == self._rx then
             self._rx:recieve()
-            --todo
-            --we could receive a message from the close api to close the socket at the appropriate time
+            --TODO @FreeMasen what events were you thinking would be injected into 
+            -- the receive loop via the cosock channel?
         end
 
         ::continue::
-        --socket.sleep(0.5)
     end
 end
 
