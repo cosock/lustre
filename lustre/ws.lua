@@ -89,7 +89,6 @@ function WebSocket:send_text(text)
     if self._close_frame_sent then
         return "currently closing connection"
     end
-    print("tring to send??")
     while data_idx <= text:len() + 1 do
         local header = FrameHeader.default()
         local payload = ""
@@ -104,7 +103,6 @@ function WebSocket:send_text(text)
             payload
         )
         frame:set_mask() --todo handle client vs server
-        print("SENDING TEXT FRAME: \n", utils.table_string(frame), "\n\n")
         local bytes, err = self.socket:send(frame:encode()) 
         --TODO send frame over cosock channel to be sent on socket from receive loop
         if not bytes then
@@ -113,7 +111,6 @@ function WebSocket:send_text(text)
         data_idx = data_idx + bytes
         frames_sent = frames_sent + 1
     end
-    print("fingished senign")
 end
 
 ---@param bytes string 
@@ -140,7 +137,6 @@ function WebSocket:send_bytes(bytes)
             payload
         )
         frame:set_mask() --TODO handle client vs server
-        print("SENDING BINARY FRAME: \n", utils.table_string(frame), "\n\n")
         local sent_bytes, err = self.socket:send(frame:encode())
         --TODO send frame over cosock channel to be sent on socket from receive loop
         if not sent_bytes then
@@ -248,13 +244,14 @@ function WebSocket:receive_loop()
                     return
                 elseif err == "invalid opcode" or err == "invalid rsv bit" then
                     self:close(CloseCode.protocol(), err)
+                elseif err == "timeout" and self.error_cb then
+                    self.error_cb("failed to get frame from socket: "..err)
                 elseif self.error_cb then
                     self.error_cb(err)
                     return "failed to get frame from socket"
                 end
                 goto continue
             end
-            print("RECEIVE FRAME: \n", utils.table_string(frame), "\n\n")
             if frame:is_control() then
                 local control_type = frame.header.opcode.sub
                 if frame:payload_len() > Frame.MAX_CONTROL_FRAME_LENGTH then
