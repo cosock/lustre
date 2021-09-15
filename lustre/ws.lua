@@ -10,9 +10,9 @@ local FrameHeader = require "lustre.frame.frame_header"
 local OpCode = require "lustre.frame.opcode"
 local CloseCode = require 'lustre.frame.close'.CloseCode
 local Message = require "lustre.message"
+local log = require "log"
 
 local utils = require "spec.utils"
---TODO cleanup print statements
 
 ---@class WebSocket
 ---
@@ -105,6 +105,7 @@ function WebSocket:send_text(text)
         frame:set_mask() --todo handle client vs server
         local bytes, err = self.socket:send(frame:encode()) 
         --TODO send frame over cosock channel to be sent on socket from receive loop
+        log.debug(string.format("SENT TEXT FRAME: \n%s\n\n", utils.table_string(frame, nil, true)))
         if not bytes then
             return err
         end
@@ -139,6 +140,7 @@ function WebSocket:send_bytes(bytes)
         frame:set_mask() --TODO handle client vs server
         local sent_bytes, err = self.socket:send(frame:encode())
         --TODO send frame over cosock channel to be sent on socket from receive loop
+        log.debug(string.format("SENT BINARY FRAME: \n%s\n\n", utils.table_string(frame, nil, true)))
         if not sent_bytes then
             return err
         end
@@ -208,7 +210,7 @@ function WebSocket:close(close_code, reason)
     local close_frame = Frame.close(close_code, reason):set_mask()
     local sent, err = self.socket:send(close_frame:encode())
     if not sent then return nil, err end
-    print("SENT CLOSE FRAME: \n", utils.table_string(close_frame), "\n\n")
+    log.debug(string.format("SENT CLOSE FRAME: \n%s\n\n", utils.table_string(close_frame, nil, true)))
     self._close_frame_sent = true
     if self.close_cb then self.close_cb(reason) end
     return 1
@@ -239,7 +241,7 @@ function WebSocket:receive_loop()
                 if self._close_frame_sent then
                     --TODO this error case is a little weird, but it seems
                     -- needed atm to ensure the loop ends when the server initates a close
-                    print("weird error case exit loop: \n", self.socket:getpeername())
+                    log.debug(string.format("weird error case exit loop: \n%s", self.socket:getpeername()))
                     return
                 elseif err == "invalid opcode" or err == "invalid rsv bit" then
                     self:close(CloseCode.protocol(), err)
@@ -252,6 +254,7 @@ function WebSocket:receive_loop()
                 end
                 goto continue
             end
+            log.debug(string.format("RECEIVED FRAME: \n%s\n\n", utils.table_string(frame, nil, true)))
             if frame:is_control() then
                 local control_type = frame.header.opcode.sub
                 if frame:payload_len() > Frame.MAX_CONTROL_FRAME_LENGTH then
