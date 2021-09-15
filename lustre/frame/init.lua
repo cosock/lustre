@@ -18,7 +18,7 @@ function Frame.from_stream(socket)
     --TODO receive in chunks if header.length is too big
     payload, err, partial = socket:receive(header.length) --num bytes
     if not payload then
-      return nil, err
+      return nil, err --TODO return partial frame
     end
   else
     payload = ""
@@ -114,6 +114,7 @@ function Frame:is_control()
   return self.header.opcode.type == "control"
 end
 
+local seeded = false
 local function seed_once()
   if seeded then return end
   seeded = true

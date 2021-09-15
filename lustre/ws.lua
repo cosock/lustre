@@ -150,7 +150,7 @@ end
 ---@param message Message
 ---@return err string|nil
 function WebSocket:send(message)
-    return "not implemented"
+    return nil, "not implemented"
 end
 
 ---@return success number 1 if handshake was successful
@@ -216,7 +216,6 @@ end
 
 ---@return message Message
 ---@return err string|nil
---TODO break out some helper functions for this...
 --TODO confirm the socket lifecycle throughout the receive loop: the receive loop ends when the socket is closed
 function WebSocket:receive_loop()
     local partial_frames = {}
@@ -245,6 +244,7 @@ function WebSocket:receive_loop()
                 elseif err == "invalid opcode" or err == "invalid rsv bit" then
                     self:close(CloseCode.protocol(), err)
                 elseif err == "timeout" and self.error_cb then
+                    --TODO retry receiving the frame, give partially received frame to err_cb
                     self.error_cb("failed to get frame from socket: "..err)
                 elseif self.error_cb then
                     self.error_cb(err)
@@ -311,13 +311,15 @@ function WebSocket:receive_loop()
                 if not frame:is_final() then
                     multiframe_message = true
                 end
-            elseif frame.header.opcode.sub   == 'continue' and not multiframe_message then
+            elseif frame.header.opcode.sub == 'continue' and not multiframe_message then
                 self:close(CloseCode.protocol(), "unexpected continue frame")
                 goto continue
             end
             --aggregate payloads
             if not frame:is_final() then --todo and we are continuing something
                 received_bytes = received_bytes + frame:payload_len()
+                --TODO what should happen if we get message that is too big for the library?
+                -- We are currently truncating the message.
                 --Dont build up a message payload that is bigger than max message size
                 if received_bytes <= self.config.max_message_size then
                     table.insert(partial_frames, frame.payload)

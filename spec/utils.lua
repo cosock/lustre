@@ -46,9 +46,15 @@ stringify_table_helper = function(val, name, multi_line, indent, previously_prin
         local v = val[k]
         previously_printed[val] = name
         if #val > 0 and type(k) == "number" then
-          tabStr =  tabStr .. stringify_table_helper(v, nil, multi_line, indent + 2, previously_printed) .. ", " .. multi_line_str
+          tabStr =  tabStr .. 
+                    stringify_table_helper(v, nil, multi_line, indent + 2, previously_printed) .. 
+                    ", " .. 
+                    multi_line_str
         else
-          tabStr =  tabStr .. stringify_table_helper(v, k, multi_line, indent + 2, previously_printed) .. ", ".. multi_line_str
+          tabStr =  tabStr .. 
+                    stringify_table_helper(v, k, multi_line, indent + 2, previously_printed) .. 
+                    ", ".. 
+                    multi_line_str
         end
       end
       if tabStr:sub(#tabStr, #tabStr) == "\n" and tabStr:sub(#tabStr - 1, #tabStr - 1) == "{" then
@@ -84,52 +90,6 @@ end
 function table_string(val, name, multi_line)
   return stringify_table_helper(val, name, multi_line, 0, {})
 end
-
-
-local function format_non_table(v)
-    if v == nil then
-        return 'nil'
-    end
-    return string.format('%q', v)
-end
----Format a table as a pretty printed string
----@param v any can be any value but works best with a table
----@param pre string|nil the current prefix (set by recursive calls)
----@param visited table[] tables that have been already printed to avoid infinite recursion (set by recursive calls)
---[[
-local function table_string(v, pre, visited)
-    pre = pre or ''
-    visited = visited or {}
-    if type(v) ~= 'table' then
-        return format_non_table(v)
-    elseif next(v) == nil then
-        return '{ }'
-    end
-    local ret = '{'
-    local orig_pre = pre
-    pre = pre .. '  '
-    visited[v] = true
-    for key, value in pairs(v) do
-        ret = ret .. '\n' .. pre .. key .. ' = '
-        if type(value) == 'table' then
-            if visited[value] then
-                ret = ret .. '[recursive]'
-            else
-                ret = ret .. table_string(value, pre .. '  ', visited)
-            end
-        elseif type(value) == 'function' then
-            ret = ret .. 'function'
-        elseif type(value) == 'string' then
-            ret = ret .. value
-        elseif type(value) == 'number' then
-            ret = ret .. format_non_table(value)
-        else
-            ret = ret .. string.format("[%s]", type(value))
-        end
-    end
-    return string.format('%s\n%s}', ret, orig_pre)
-end
---]]
 
 local function assert_fmt(b, ...)
     if not b then

@@ -1,8 +1,6 @@
 ---@class Message
----@field protocols string[] List of requested protocols
----@field extensions table[] List of requested extensions
----@field key string|nil Signing key
----@field accept string|nil Sec-WebSocket-Accept header value
+---@field type string either "binary" or "text"
+---@field data string 
 local Message = {}
 Message.__index = Message
 
