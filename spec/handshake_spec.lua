@@ -1,40 +1,38 @@
-local Key = require 'lustre.handshake.key'
-local Handshake = require 'lustre.handshake'
+local Key = require "lustre.handshake.key"
+local Handshake = require "lustre.handshake"
 local utils = require "spec.utils"
 local Request = require "luncheon.request"
 local Response = require "luncheon.response"
 
 local function fill_headers(headers, t)
-    for key, value in pairs(headers) do
-        if type(value) == 'table' then
-            for _, value in ipairs(value) do
-                t:add_header(key, value)
-            end
-        else
-            t:add_header(key, value)
-        end
+  for key, value in pairs(headers) do
+    if type(value) == "table" then
+      for _, value in ipairs(value) do t:add_header(key, value) end
+    else
+      t:add_header(key, value)
     end
-    t._parsed_headers = true
+  end
+  t._parsed_headers = true
 end
 
 local function mock_request(headers, method)
-    local req = Request.new(method, '/')
-    fill_headers(headers, req)
-    return req
+  local req = Request.new(method, "/")
+  fill_headers(headers, req)
+  return req
 end
 
 local function mock_response(headers, status)
-    local res = Response.new(status)
-    fill_headers(headers, res)
-    return res
+  local res = Response.new(status)
+  fill_headers(headers, res)
+  return res
 end
 
-describe('handshake', function ()
-    it('build_key_from', function ()
-        local key = Key.build_accept_from('dGhlIHNhbXBsZSBub25jZQ==');
-        utils.assert_eq(key, 's3pPLMBiTxaQ9kYGzzhZRbK+xOo=')
-    end)
-    --[[
+describe("handshake", function()
+  it("build_key_from", function()
+    local key = Key.build_accept_from("dGhlIHNhbXBsZSBub25jZQ==");
+    utils.assert_eq(key, "s3pPLMBiTxaQ9kYGzzhZRbK+xOo=")
+  end)
+  --[[
     -- Server functionality isn't supported yet
     describe('server', function ()
         it('fails with bad response', function ()
@@ -363,55 +361,51 @@ describe('handshake', function ()
         end)
     end)
 --]]
-    describe('client', function ()
-        it('constructs with no protocols, not encodings', function ()
+  describe("client", function()
+    it("constructs with no protocols, not encodings", function()
 
-            local h = Handshake.client()
-            utils.assert_eq(#h.protocols, 0)
-            utils.assert_eq(#h.extensions, 0)
-            utils.assert_fmt(h.key, 'expected key fount %q', h.key)
-        end)
-        it('constructs with protocols, not encodings', function ()
-            local h = Handshake.client(nil, {'asdf', 'qwer'})
-            utils.assert_eq(#h.protocols, 2)
-            utils.assert_eq(h.protocols[1], 'asdf')
-            utils.assert_eq(h.protocols[2], 'qwer')
-            utils.assert_eq(#h.extensions, 0)
-            utils.assert_fmt(h.key, 'expected key fount %q', h.key)
-        end)
-        it('constructs with protocols and encodings', function ()
-            local h = Handshake.client(nil, {'asdf', 'qwer'}, {'poiu', 'lkjh'})
-            utils.assert_eq(#h.protocols, 2)
-            utils.assert_eq(h.protocols[1], 'asdf')
-            utils.assert_eq(h.protocols[2], 'qwer')
-            utils.assert_eq(#h.extensions, 2)
-            utils.assert_eq(h.extensions[1], 'poiu')
-            utils.assert_eq(h.extensions[2], 'lkjh')
-            utils.assert_fmt(h.key, 'expected key fount %q', h.key)
-        end)
-        it('validates accept', function ()
-            local h = Handshake.client()
-            local headers = {
-                sec_websocket_accept = Key.build_accept_from(h.key)
-            }
-            local req = mock_request(headers)
-            spy(req.get_headers)
-            assert(h:validate_accept(req))
-        end)
-        it('no validation of bad accept', function ()
-            local h = Handshake.client()
-            local headers = {
-                sec_websocket_accept = 'junk',
-            }
-            local req = mock_request(headers)
-            assert(not h:validate_accept(req))
-        end)
-        it('no validation of missing accept', function ()
-            local h = Handshake.client()
-            local req = mock_request({})
-            local suc, err = h:validate_accept(req)
-            assert(not suc, 'expected failure')
-            utils.assert_eq(err, 'Invalid request, no Sec-Websocket-Accept header')
-        end)
+      local h = Handshake.client()
+      utils.assert_eq(#h.protocols, 0)
+      utils.assert_eq(#h.extensions, 0)
+      utils.assert_fmt(h.key, "expected key fount %q", h.key)
     end)
+    it("constructs with protocols, not encodings", function()
+      local h = Handshake.client(nil, {"asdf", "qwer"})
+      utils.assert_eq(#h.protocols, 2)
+      utils.assert_eq(h.protocols[1], "asdf")
+      utils.assert_eq(h.protocols[2], "qwer")
+      utils.assert_eq(#h.extensions, 0)
+      utils.assert_fmt(h.key, "expected key fount %q", h.key)
+    end)
+    it("constructs with protocols and encodings", function()
+      local h = Handshake.client(nil, {"asdf", "qwer"}, {"poiu", "lkjh"})
+      utils.assert_eq(#h.protocols, 2)
+      utils.assert_eq(h.protocols[1], "asdf")
+      utils.assert_eq(h.protocols[2], "qwer")
+      utils.assert_eq(#h.extensions, 2)
+      utils.assert_eq(h.extensions[1], "poiu")
+      utils.assert_eq(h.extensions[2], "lkjh")
+      utils.assert_fmt(h.key, "expected key fount %q", h.key)
+    end)
+    it("validates accept", function()
+      local h = Handshake.client()
+      local headers = {sec_websocket_accept = Key.build_accept_from(h.key)}
+      local req = mock_request(headers)
+      spy(req.get_headers)
+      assert(h:validate_accept(req))
+    end)
+    it("no validation of bad accept", function()
+      local h = Handshake.client()
+      local headers = {sec_websocket_accept = "junk"}
+      local req = mock_request(headers)
+      assert(not h:validate_accept(req))
+    end)
+    it("no validation of missing accept", function()
+      local h = Handshake.client()
+      local req = mock_request({})
+      local suc, err = h:validate_accept(req)
+      assert(not suc, "expected failure")
+      utils.assert_eq(err, "Invalid request, no Sec-Websocket-Accept header")
+    end)
+  end)
 end)

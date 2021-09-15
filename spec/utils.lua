@@ -1,4 +1,3 @@
-
 --- Print binary string as ascii hex
 ---@param str string
 ---@return string ascii hex string
@@ -10,7 +9,7 @@ function get_print_safe_string(str)
   end
 end
 
-local key_order_cmp = function (key1, key2)
+local key_order_cmp = function(key1, key2)
   local type1 = type(key1)
   local type2 = type(key2)
   if type1 ~= type2 then
@@ -46,20 +45,18 @@ stringify_table_helper = function(val, name, multi_line, indent, previously_prin
         local v = val[k]
         previously_printed[val] = name
         if #val > 0 and type(k) == "number" then
-          tabStr =  tabStr .. 
-                    stringify_table_helper(v, nil, multi_line, indent + 2, previously_printed) .. 
-                    ", " .. 
-                    multi_line_str
+          tabStr = tabStr ..
+                     stringify_table_helper(v, nil, multi_line, indent + 2, previously_printed) ..
+                     ", " .. multi_line_str
         else
-          tabStr =  tabStr .. 
-                    stringify_table_helper(v, k, multi_line, indent + 2, previously_printed) .. 
-                    ", ".. 
-                    multi_line_str
+          tabStr = tabStr ..
+                     stringify_table_helper(v, k, multi_line, indent + 2, previously_printed) ..
+                     ", " .. multi_line_str
         end
       end
       if tabStr:sub(#tabStr, #tabStr) == "\n" and tabStr:sub(#tabStr - 1, #tabStr - 1) == "{" then
         tabStr = tabStr:sub(1, -2) .. "}"
-      elseif tabStr:sub(#tabStr - 1, #tabStr - 1) == ","  then
+      elseif tabStr:sub(#tabStr - 1, #tabStr - 1) == "," then
         tabStr = tabStr:sub(1, -3) .. (multi_line and string.rep(" ", indent) or "") .. "}"
       else
         tabStr = tabStr .. (multi_line and string.rep(" ", indent) or "") .. "}"
@@ -91,63 +88,37 @@ function table_string(val, name, multi_line)
   return stringify_table_helper(val, name, multi_line, 0, {})
 end
 
-local function assert_fmt(b, ...)
-    if not b then
-        error(string.format(...), 2)
-    end
-end
+local function assert_fmt(b, ...) if not b then error(string.format(...), 2) end end
 
 local function deep_equal(lhs, rhs)
-    if type(lhs) ~= type(rhs) then
-        return false
-    end
-    if type(lhs) == 'table' then
-        for key, value in pairs(lhs) do
-            if not deep_equal(value, rhs[key]) then
-                return false
-            end
-        end
-        return true
-    end
-    return lhs == rhs
+  if type(lhs) ~= type(rhs) then return false end
+  if type(lhs) == "table" then
+    for key, value in pairs(lhs) do if not deep_equal(value, rhs[key]) then return false end end
+    return true
+  end
+  return lhs == rhs
 end
 
 local function assert_eq(lhs, rhs, msg)
-    if not deep_equal(lhs, rhs) then
-        local template = '%q ~= %q'
-        if msg then
-            template = template .. ' %s'
-        end
-        error(
-            string.format(
-                template,
-                table_string(lhs),
-                table_string(rhs),
-                table_string(msg)
-            ), 2)
-    end
+  if not deep_equal(lhs, rhs) then
+    local template = "%q ~= %q"
+    if msg then template = template .. " %s" end
+    error(string.format(template, table_string(lhs), table_string(rhs), table_string(msg)), 2)
+  end
 end
 
 local function assert_ne(lhs, rhs, msg)
-    if deep_equal(lhs, rhs)then
-        local template = '%q == %q'
-        if msg then
-            template = template .. ' %s'
-        end
-        error(
-            string.format(
-                template,
-                table_string(lhs),
-                table_string(rhs),
-                table_string(msg)
-            ), 2)
-    end
+  if deep_equal(lhs, rhs) then
+    local template = "%q == %q"
+    if msg then template = template .. " %s" end
+    error(string.format(template, table_string(lhs), table_string(rhs), table_string(msg)), 2)
+  end
 end
 
 return {
-    assert_fmt = assert_fmt,
-    assert_eq = assert_eq,
-    deep_equal = deep_equal,
-    assert_ne = assert_ne,
-    table_string = table_string
+  assert_fmt = assert_fmt,
+  assert_eq = assert_eq,
+  deep_equal = deep_equal,
+  assert_ne = assert_ne,
+  table_string = table_string,
 }

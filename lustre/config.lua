@@ -16,67 +16,63 @@ local DEFAULT_MAX_FRAMES_WITHOUT_PONG = 4
 ---Construct a default configurations
 ---@return Config
 function Config.default()
-    return setmetatable({
-        _max_queue_size = nil,
-        _max_frame_size = DEFAULT_MAX_FRAME,
-        max_message_size = DEFAULT_MAX_MESSAGE,
-        _max_frames_without_pong = DEFAULT_MAX_FRAMES_WITHOUT_PONG,
-        _accept_unmasked_frames = false,
-        extensions = {},
-        protocols = {},
-        _keep_alive = nil,
-    }, Config)
+  return setmetatable({
+    _max_queue_size = nil,
+    _max_frame_size = DEFAULT_MAX_FRAME,
+    max_message_size = DEFAULT_MAX_MESSAGE,
+    _max_frames_without_pong = DEFAULT_MAX_FRAMES_WITHOUT_PONG,
+    _accept_unmasked_frames = false,
+    extensions = {},
+    protocols = {},
+    _keep_alive = nil,
+  }, Config)
 end
 
 ---Set the max message queue size
 ---@param size number|nil
 ---@return Config
 function Config:max_queue_size(size)
-    self._max_queue_size = size
-    return self
+  self._max_queue_size = size
+  return self
 end
 
 ---Set the max message size (Default 64mb)
 ---@param size number|nil
 ---@return Config
 function Config:max_message_size(size)
-    self._max_message_size = size or DEFAULT_MAX_MESSAGE
-    return self
+  self._max_message_size = size or DEFAULT_MAX_MESSAGE
+  return self
 end
 
 ---Set the max frame size (Default 16mb)
 ---@param size number|nil
 ---@return Config
 function Config:max_frame_size(size)
-    self._max_frame_size = size or DEFAULT_MAX_FRAME
-    return self
+  self._max_frame_size = size or DEFAULT_MAX_FRAME
+  return self
 end
 
 ---Set the max frames that can be received while waiting for a pong (Default 4)
 ---@param size number|nil
 ---@return Config
 function Config:max_frames_without_pong(size)
-    self._max_frames_without_pong = size or DEFAULT_MAX_FRAMES_WITHOUT_PONG
-    return self
+  self._max_frames_without_pong = size or DEFAULT_MAX_FRAMES_WITHOUT_PONG
+  return self
 end
 
 function Config:extension(name, params)
-    table.insert(self.extensions, {
-        name = name,
-        params = params,
-    })
-    return self
+  table.insert(self.extensions, {name = name, params = params})
+  return self
 end
 
 function Config:protocol(name)
-    table.insert(self.protocols, name)
-    return self
+  table.insert(self.protocols, name)
+  return self
 end
 
 function Config:keep_alive(timeout)
-    self._keep_alive = timeout
-    return self
+  self._keep_alive = timeout
+  return self
 end
-
 
 return Config

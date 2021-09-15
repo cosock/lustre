@@ -8,96 +8,66 @@ OpCode.__index = OpCode
 function OpCode.decode(n)
   local ret = {}
   if n == 0 then
-      ret.type = 'data'
-      ret.sub = 'continue'
+    ret.type = "data"
+    ret.sub = "continue"
   elseif n == 1 then
-      ret.type = 'data'
-      ret.sub = 'text'
+    ret.type = "data"
+    ret.sub = "text"
   elseif n == 2 then
-      ret.type = 'data'
-      ret.sub = 'binary'
+    ret.type = "data"
+    ret.sub = "binary"
   elseif n >= 3 and n <= 7 then
-      ret.type = 'data'
-      ret.sub = 'reserved'
-      ret.value = n
+    ret.type = "data"
+    ret.sub = "reserved"
+    ret.value = n
   elseif n == 8 then
-      ret.type = 'control'
-      ret.sub = 'close'
+    ret.type = "control"
+    ret.sub = "close"
   elseif n == 9 then
-      ret.type = 'control'
-      ret.sub = 'ping'
+    ret.type = "control"
+    ret.sub = "ping"
   elseif n == 10 then
-      ret.type = 'control'
-      ret.sub = 'pong'
+    ret.type = "control"
+    ret.sub = "pong"
   elseif n <= 15 then
-      ret.type = 'control'
-      ret.sub = 'reserved'
-      ret.value = n
+    ret.type = "control"
+    ret.sub = "reserved"
+    ret.value = n
   else
-      return nil, 'OpCode out of range'
+    return nil, "OpCode out of range"
   end
   return setmetatable(ret, OpCode)
 end
 
 function OpCode:encode()
-  if self.value then
-    return self.value
+  if self.value then return self.value end
+  if self.type == "data" then
+    if self.sub == "continue" then return 0 end
+    if self.sub == "text" then return 1 end
+    if self.sub == "binary" then return 2 end
   end
-  if self.type == 'data' then
-    if self.sub == 'continue' then
-      return 0
-    end
-    if self.sub == 'text' then
-      return 1
-    end
-    if self.sub == 'binary' then
-      return 2
-    end
+  if self.type == "control" then
+    if self.sub == "close" then return 8 end
+    if self.sub == "ping" then return 9 end
+    if self.sub == "pong" then return 10 end
   end
-  if self.type == 'control' then
-    if self.sub == 'close' then
-      return 8
-    end
-    if self.sub == 'ping' then
-      return 9
-    end
-    if self.sub == 'pong' then
-      return 10
-    end
-  end
-  return nil, 'Invalid opcode'
+  return nil, "Invalid opcode"
 end
 
-function OpCode.ping()
-  return OpCode.from('control', 'ping')
-end
+function OpCode.ping() return OpCode.from("control", "ping") end
 
-function OpCode.pong()
-  return OpCode.from('control', 'pong')
-end
+function OpCode.pong() return OpCode.from("control", "pong") end
 
-function OpCode.close()
-  return OpCode.from('control', 'close')
-end
+function OpCode.close() return OpCode.from("control", "close") end
 
-function OpCode.continue()
-  return OpCode.from('data', 'continue')
-end
+function OpCode.continue() return OpCode.from("data", "continue") end
 
-function OpCode.text()
-  return OpCode.from('data', 'text')
-end
+function OpCode.text() return OpCode.from("data", "text") end
 
-function OpCode.binary()
-  return OpCode.from('data', 'binary')
-end
+function OpCode.binary() return OpCode.from("data", "binary") end
 
 function OpCode.from(ty, sub, value)
-  return setmetatable({
-    type = ty,
-    sub = sub,
-    value = value,
-  }, OpCode)
+  return setmetatable({type = ty, sub = sub, value = value}, OpCode)
 end
 
 return OpCode
