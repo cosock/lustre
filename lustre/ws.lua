@@ -1,5 +1,5 @@
 local cosock = require 'cosock'
-local socket = require "socket"
+local socket = require "cosock.socket"
 local Request = require "luncheon.request"
 local Response = require "luncheon.response"
 local Handshake = require 'lustre.handshake'
@@ -89,29 +89,31 @@ function WebSocket:send_text(text)
     if self._close_frame_sent then
         return "currently closing connection"
     end
-    while data_idx <= text:len() + 1 do
+    repeat --TODO fragmentation while sending has not been tested
         local header = FrameHeader.default()
         local payload = ""
         if (text:len() - data_idx + 1) > self.config._max_frame_size then
-            header.set_fin(false)
+            header:set_fin(false)
         end
         payload = string.sub(text, data_idx, data_idx + self.config._max_frame_size)
-        header:set_opcode(OpCode.text())
+        if data_idx ~= 1 then
+            header:set_opcode(OpCode.continue())
+        else
+            header:set_opcode(OpCode.text())
+        end
         header:set_length(#payload)
         local frame = Frame.from_parts(
             header,
             payload
         )
         frame:set_mask() --todo handle client vs server
-        local bytes, err = self.socket:send(frame:encode()) 
-        --TODO send frame over cosock channel to be sent on socket from receive loop
-        log.debug(string.format("SENT TEXT FRAME: \n%s\n\n", utils.table_string(frame, nil, true)))
-        if not bytes then
-            return err
+        local suc, err = self._tx:send(frame)
+        if err then
+            return "channel error:"..err
         end
-        data_idx = data_idx + bytes
+        data_idx = data_idx + frame:payload_len()
         frames_sent = frames_sent + 1
-    end
+    until text:len() <= data_idx
 end
 
 ---@param bytes string 
@@ -124,29 +126,31 @@ function WebSocket:send_bytes(bytes)
     if self._close_frame_sent then
         return "currently closing connection"
     end
-    while data_idx <= bytes:len() + 1 do
+    repeat
         local header = FrameHeader.default()
         local payload = ""
         if (bytes:len() - data_idx + 1) > self.config._max_frame_size then
-            header.set_fin(false)
+            header:set_fin(false)
         end
         payload = string.sub(bytes, data_idx, data_idx + self.config._max_frame_size)
-        header:set_opcode(OpCode.binary())
+        if data_idx ~= 1 then
+            header:set_opcode(OpCode.continue())
+        else
+            header:set_opcode(OpCode.binary())
+        end
         header:set_length(#payload)
         local frame = Frame.from_parts(
             header,
             payload
         )
-        frame:set_mask() --TODO handle client vs server
-        local sent_bytes, err = self.socket:send(frame:encode())
-        --TODO send frame over cosock channel to be sent on socket from receive loop
-        log.debug(string.format("SENT BINARY FRAME: \n%s\n\n", utils.table_string(frame, nil, true)))
-        if not sent_bytes then
-            return err
+        frame:set_mask() --todo handle client vs server
+        local suc, err = self._tx:send(frame)
+        if err then
+            return "channel error:"..err
         end
-        data_idx = data_idx + sent_bytes
+        data_idx = data_idx + frame:payload_len()
         frames_sent = frames_sent + 1
-    end
+    until bytes:len() <= data_idx
 end
 
 ---@param message Message
@@ -205,20 +209,19 @@ end
 
 ---@param close_code CloseCode
 ---@param reason string
+---@return success number 1 if succss
 ---@return err string|nil
 function WebSocket:close(close_code, reason)
-    local close_frame = Frame.close(close_code, reason):set_mask()
-    local sent, err = self.socket:send(close_frame:encode())
-    if not sent then return nil, err end
-    log.debug(string.format("SENT CLOSE FRAME: \n%s\n\n", utils.table_string(close_frame, nil, true)))
-    self._close_frame_sent = true
-    if self.close_cb then self.close_cb(reason) end
+    local close_frame = Frame.close(close_code, reason):set_mask() --TODO client vs server
+    local suc, err = self._tx:send(close_frame)
+    if not suc then
+        return nil, "channel error:"..err
+    end
     return 1
 end
 
 ---@return message Message
 ---@return err string|nil
---TODO confirm the socket lifecycle throughout the receive loop: the receive loop ends when the socket is closed
 function WebSocket:receive_loop()
     local partial_frames = {}
     local received_bytes = 0
@@ -242,6 +245,7 @@ function WebSocket:receive_loop()
                     --TODO this error case is a little weird, but it seems
                     -- needed atm to ensure the loop ends when the server initates a close
                     log.debug(string.format("weird error case exit loop: \n%s", self.socket:getpeername()))
+                    self.socket:close()
                     return
                 elseif err == "invalid opcode" or err == "invalid rsv bit" then
                     self:close(CloseCode.protocol(), err)
@@ -259,26 +263,30 @@ function WebSocket:receive_loop()
                 local control_type = frame.header.opcode.sub
                 if frame:payload_len() > Frame.MAX_CONTROL_FRAME_LENGTH then
                     self:close(CloseCode.protocol())
-                    return
+                    goto continue
                 end
                 if control_type == 'ping' then
                     if not frame:is_final() then
                         self:close(CloseCode.protocol())
+                        goto continue
                     end
                     local fm = Frame.pong(frame.payload):set_mask()
                     self.socket:send(fm:encode())
                 elseif control_type == 'pong' then
                     if not frame:is_final() then
                         self:close(CloseCode.protocol())
+                        goto continue
                     end
                     pending_pong = false --TODO this functionality is not tested by the test framework
                     frames_since_last_ping = 0
                 elseif control_type == 'close' then
+                    self._close_frame_received = true
                     if not self._close_frame_sent then
                         self:close(CloseCode.decode(frame.payload))
+                    else
+                        self.socket:close()
+                        return
                     end
-                    self.socket:close()
-                    return
                 end
                 goto continue
             end
@@ -319,7 +327,7 @@ function WebSocket:receive_loop()
                 goto continue
             end
             --aggregate payloads
-            if not frame:is_final() then --todo and we are continuing something
+            if not frame:is_final() then
                 received_bytes = received_bytes + frame:payload_len()
                 --TODO what should happen if we get message that is too big for the library?
                 -- We are currently truncating the message.
@@ -343,10 +351,32 @@ function WebSocket:receive_loop()
             if self.message_cb then
                 self.message_cb(Message.new(msg_type, full_payload))
             end
-        elseif recv[1] == self._rx then
-            self._rx:recieve()
-            --TODO @FreeMasen what events were you thinking would be injected into 
-            -- the receive loop via the cosock channel?
+        elseif recv[1] == self._rx then --frames we need to send on the socket
+            local frame, err = self._rx:receive()
+            if not frame then
+                if self.error_cb then 
+                    self.error_cb("channel receive failure: "..err)
+                end
+                goto continue
+            end
+
+            local sent_bytes, err = self.socket:send(frame:encode())
+            if not sent_bytes then
+                --TODO retry sending
+                if self.error_cb then self.error_cb("socket send failure: "..err) end
+                goto continue
+            end
+            if frame:is_control() and frame.header.opcode.sub == 'close' then
+                self._close_frame_sent = true
+                if self.close_cb then self.close_cb(reason) end
+                if self._close_frame_received then
+                    self.socket:close()
+                    log.debug("Close handshake completed")
+                    return
+                end
+            end
+
+            log.debug(string.format("SENT FRAME: \n%s\n\n", utils.table_string(frame, nil, true)))
         end
 
         ::continue::
