@@ -13,6 +13,8 @@ dependencies = {
    "sha1 >= 0.6.0",
    "base64 >= 1.5",
    "luncheon >= 0.0.0",
+   "cosock >= 0.0.0",
+   "luasocket == 3.0rc1-2",
 }
 build = {
    type = "builtin",
