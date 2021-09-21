@@ -80,7 +80,6 @@ end
 function WebSocket:send_text(text)
   local data_idx = 1
   local frames_sent = 0
-  local total_bytes
   if self._close_frame_sent then return "currently closing connection" end
   repeat -- TODO fragmentation while sending has not been tested
     local header = FrameHeader.default()
@@ -108,7 +107,6 @@ end
 function WebSocket:send_bytes(bytes)
   local data_idx = 1
   local frames_sent = 0
-  local total_bytes
   if self._close_frame_sent then return "currently closing connection" end
   repeat
     local header = FrameHeader.default()
