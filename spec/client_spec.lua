@@ -35,7 +35,9 @@ local ALLOWED_FAILURES = {
   ["1.2.8"] = true,
   ["2.2"]   = true,
   ["2.6"]   = true,
-  ["2.1"]   = true,
+  ["2.11"]   = true,
+  ["5.5"]   = true,
+  ["5.8"]   = true,
   ["5.19"] =  true,
   ["5.20"] =  true,
 }
