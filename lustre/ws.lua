@@ -13,7 +13,7 @@ local CloseCode = require"lustre.frame.close".CloseCode
 local Message = require "lustre.message"
 local log = require "log"
 
-local utils = require "spec.utils"
+local utils = require "lustre.utils"
 
 ---@class WebSocket
 ---
@@ -244,7 +244,7 @@ function WebSocket:receive_loop()
           if not sent_bytes and self.error_cb then
             self.error_cb("failed to send pong in response to ping: "..err)
           else
-            log.trace(string.format("SENT FRAME: \n%s\n\n", utils.table_string(fm)))
+            log.trace(string.format("SENT FRAME: \n%s\n\n", utils.table_string(fm, nil, true)))
           end
         elseif control_type == "pong" then
           pending_pong = false -- TODO this functionality is not tested by the test framework
