@@ -1,0 +1,35 @@
+name: CI
+on:
+  push:
+    branches: [ actions ]
+  pull_request:
+    branches: [ master ]
+jobs:
+  test:
+
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: docker-practice/actions-setup-docker@1.0.8
+      - run: docker pull crossbario/autobahn-testsuite
+      - uses: xpol/setup-lua@v0.3
+        with:
+          lua-version: "5.3"
+      - uses: leafo/gh-actions-luarocks@v4.1.0
+      - name: install busted
+        run: luarocks install busted
+      - name: install luacov
+        run: luarocks install luacov
+      - name: luarocks make
+        run: luarocks make
+      - name: run tests
+        run: |
+          docker run -it -p 9001:9001 \
+          -v "$PWD/spec/config:/config" \
+          -v "$PWD/spec/reports:/reports" \
+          -d crossbario/autobahn-testsuite \
+          wstest -d -m fuzzingserver -s /config/fuzzingserver.json \
+          && sleep 3 \
+          && busted -c
+        timeout-minutes: 3
+      - uses: codecov/codecov-action@v2.1.0

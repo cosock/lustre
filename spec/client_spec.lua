@@ -4,9 +4,9 @@
 Start the autobahn test container
 ```
 docker run -it -p 9001:9001 \
-    -v "/home/parallels/lustre/spec/config:/config" \
-    -v "/home/parallels/lustre/spec/reports:/reports" \
-    crossbario/autobahn-testsuite \
+    -v "$PWD/spec/config:/config" \
+    -v "$PWD/spec/reports:/reports" \
+    -d crossbario/autobahn-testsuite \
     wstest -d -m fuzzingserver -s /config/fuzzingserver.json
 ```
 Run the test cases
