@@ -220,6 +220,9 @@ function WebSocket:receive_loop()
         elseif err == "timeout" and self.error_cb then
           -- TODO retry receiving the frame, give partially received frame to err_cb
           self.error_cb("failed to get frame from socket: " .. err)
+        elseif err and err:match("close") then
+          if self.error_cb then self.error_cb(s) end
+          return
         elseif self.error_cb then
           self.error_cb("failed to get frame from socket: " .. err)
         end
