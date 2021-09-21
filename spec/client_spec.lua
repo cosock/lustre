@@ -38,8 +38,10 @@ local function echo_client()
     else
       err = websocket:send_bytes(msg.data)
     end
-    if err then print("ECHOERROR") end
-  end):register_error_cb(function(err) print("ERROR: ", err) end):register_close_cb(function(arg)
+    if err then print("ECHOERROR: "..err) end
+  end):register_error_cb(function(err)
+    print("ERROR: ", err)
+  end):register_close_cb(function(arg)
     print("INFO: Connection closed. ", arg)
   end)
   print("INFO: Connecting websocket")

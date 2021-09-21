@@ -2,6 +2,7 @@ local cosock = require "cosock"
 local socket = require "cosock.socket"
 local Request = require "luncheon.request"
 local Response = require "luncheon.response"
+local send_utils = require "luncheon.utils"
 local Handshake = require "lustre.handshake"
 local Key = require "lustre.handshake.key"
 local Config = require "lustre.config"
@@ -34,7 +35,7 @@ WebSocket.__index = WebSocket
 ---@param close_cb function
 ---@return client WebSocket
 ---@return err string|nil
-function WebSocket.client(socket, url, config, ...)
+function WebSocket.client(socket, url, config)
   local _tx, _rx = cosock.channel.new()
   return setmetatable({
     is_client = true,
@@ -44,9 +45,6 @@ function WebSocket.client(socket, url, config, ...)
     config = config or Config.default(),
     _tx = _tx,
     _rx = _rx,
-    message_cb = arg[1],
-    error_cb = arg[2],
-    close_cb = arg[3],
   }, WebSocket)
 end
 
@@ -127,6 +125,8 @@ function WebSocket:send_bytes(bytes)
   until bytes:len() <= data_idx
 end
 
+--TODO remove the fragmentation code duplication in the `send_text` and `send_bytes` apis
+--TODO  Could perhaps remove those apis entirely.
 ---@param message Message
 ---@return err string|nil
 function WebSocket:send(message) return nil, "not implemented" end
@@ -192,8 +192,14 @@ function WebSocket:receive_loop()
     local recv, _, err = socket.select({self.socket, self._rx}, nil, self.config._keep_alive)
     if not recv then
       if err == "timeout" then
-        self.socket:send(Frame.ping():set_mask():encode())
-        pending_pong = true
+        local fm = Frame.ping():set_mask()
+        local sent_bytes, err = send_utils.send_all(self.socket, fm:encode())
+        if not err then
+          log.debug("SENT FRAME: \n%s\n\n", utils.table_string(fm, nil, true))
+          pending_pong = true
+        elseif self.error_cb then
+          self.error_cb(string.format("failed to send ping: "..err))
+        end
       end
       goto continue
     end
@@ -201,41 +207,42 @@ function WebSocket:receive_loop()
       local frame, err = Frame.from_stream(self.socket)
       if not frame then
         if self._close_frame_sent then
-          -- TODO this error case is a little weird, but it seems
-          -- needed atm to ensure the loop ends when the server initates a close
-          log.debug(string.format("weird error case exit loop: \n%s", self.socket:getpeername()))
+          -- TODO this error case is a little weird, I think it happens if the server doesn't close properly
+          if self.error_cb then self.error_cb("Failed to receive frame after sending close frame") end
           self.socket:close()
           return
         elseif err == "invalid opcode" or err == "invalid rsv bit" then
+          log.trace("PROTOCOL ERR: received frame with " .. err)
           self:close(CloseCode.protocol(), err)
         elseif err == "timeout" and self.error_cb then
           -- TODO retry receiving the frame, give partially received frame to err_cb
           self.error_cb("failed to get frame from socket: " .. err)
         elseif self.error_cb then
-          self.error_cb(err)
-          return "failed to get frame from socket"
+          self.error_cb("failed to get frame from socket: " .. err)
+          return
         end
         goto continue
       end
       log.debug(string.format("RECEIVED FRAME: \n%s\n\n", utils.table_string(frame, nil, true)))
       if frame:is_control() then
+        if not frame:is_final() then
+          log.trace("PROTOCOL ERR: received non final control frame")
+          self:close(CloseCode.protocol())
+          goto continue
+        end
         local control_type = frame.header.opcode.sub
         if frame:payload_len() > Frame.MAX_CONTROL_FRAME_LENGTH then
+          log.trace("PROTOCOL ERR: received control frame that is too big")
           self:close(CloseCode.protocol())
           goto continue
         end
         if control_type == "ping" then
-          if not frame:is_final() then
-            self:close(CloseCode.protocol())
-            goto continue
-          end
           local fm = Frame.pong(frame.payload):set_mask()
-          self.socket:send(fm:encode())
-        elseif control_type == "pong" then
-          if not frame:is_final() then
-            self:close(CloseCode.protocol())
-            goto continue
+          local sent_bytes, err = send_utils.send_all(self.socket, fm:encode())
+          if not sent_bytes and self.error_cb then
+            self.error_cb("failed to send pong in response to ping: "..err)
           end
+        elseif control_type == "pong" then
           pending_pong = false -- TODO this functionality is not tested by the test framework
           frames_since_last_ping = 0
         elseif control_type == "close" then
@@ -243,6 +250,7 @@ function WebSocket:receive_loop()
           if not self._close_frame_sent then
             self:close(CloseCode.decode(frame.payload))
           else
+            log.trace("server copmleted our close handshake")
             self.socket:close()
             return
           end
@@ -250,13 +258,14 @@ function WebSocket:receive_loop()
         goto continue
       end
 
-      -- should we close because we have been waiting to long for a ping?
-      -- we might not need to do this...it doesn't seem like it was prioritized
+      -- Should we close because we have been waiting to long for a ping?
+      -- We might not need to do this, because it wasn't prioritized
       -- with a test case in autobahn
       if pending_pong then
         frames_since_last_ping = frames_since_last_ping + 1
         if frames_since_last_ping > self.config._max_frames_without_pong then
           frames_since_last_ping = 0
+          log.trace("PROTOCOL ERR: received too many frames while waiting for pong")
           local err = self:close(CloseCode.policy(), "no pong after ping")
         end
       end
@@ -285,9 +294,10 @@ function WebSocket:receive_loop()
         received_bytes = received_bytes + frame:payload_len()
         -- TODO what should happen if we get message that is too big for the library?
         -- We are currently truncating the message.
-        -- Dont build up a message payload that is bigger than max message size
         if received_bytes <= self.config.max_message_size then
           table.insert(partial_frames, frame.payload)
+        else
+          log.warn("truncating message thats bigger than max config size")
         end
         goto continue
       else
@@ -309,23 +319,22 @@ function WebSocket:receive_loop()
         goto continue
       end
 
-      local sent_bytes, err = self.socket:send(frame:encode())
+      local sent_bytes, err = send_utils.send_all(self.socket, frame:encode())
       if not sent_bytes then
-        -- TODO retry sending
         if self.error_cb then self.error_cb("socket send failure: " .. err) end
         goto continue
       end
+      log.debug(string.format("SENT FRAME: \n%s\n\n", utils.table_string(frame, nil, true)))
+      
       if frame:is_control() and frame.header.opcode.sub == "close" then
         self._close_frame_sent = true
         if self.close_cb then self.close_cb(reason) end
         if self._close_frame_received then
           self.socket:close()
-          log.debug("Close handshake completed")
+          log.trace("completed server close handshake")
           return
         end
       end
-
-      log.debug(string.format("SENT FRAME: \n%s\n\n", utils.table_string(frame, nil, true)))
     end
 
     ::continue::
