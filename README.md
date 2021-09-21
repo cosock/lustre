@@ -13,27 +13,19 @@ would be required to handle parallelism.
 
 
 ```lua
----This websocket server will report the time to the client
+---This websocket client will report the time to the server
 ---once a second for 30 seconds and then disconnect. Any
----incoming messages will cause the server to close the connection
------------------------------------------------------------
------------------------------------------------------------
----Note: Currently this only an outline of the intended api
------------------------------------------------------------
------------------------------------------------------------
+---incoming messages will cause the client to close the connection
 local lustre = require 'lustre'
-local socket = require 'socket' --just for the sleeping
+local cosock = require 'cosock'
 
-local ws = lustre.Websocket(lustre.Config.default())
--- Somehow get a Luncheon Request and Response object
-local req = {}
-local res = {}
-assert(ws:perform_handshake(req, res))
-ws:add_message_callback(function (message)
+local ws = lustre.Websocket.client(assert(cosock.socket.tcp()), '/sse', lustre.Config.default())
+assert(ws:connect('0.0.0.0', 8080))
+ws:register_message_cb(function (message)
   ws:close()
 end)
 while true do
   ws:send_text(string.format('%s', os.time()))
-  socket.sleep(1)
+  cosock.socket.sleep(1)
 end
 ```
