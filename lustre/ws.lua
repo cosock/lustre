@@ -222,7 +222,6 @@ function WebSocket:receive_loop()
           self.error_cb("failed to get frame from socket: " .. err)
         elseif self.error_cb then
           self.error_cb("failed to get frame from socket: " .. err)
-          return
         end
         goto continue
       end
@@ -244,6 +243,8 @@ function WebSocket:receive_loop()
           local sent_bytes, err = send_utils.send_all(self.socket, fm:encode())
           if not sent_bytes and self.error_cb then
             self.error_cb("failed to send pong in response to ping: "..err)
+          else
+            log.trace(string.format("SENT FRAME: \n%s\n\n", utils.table_string(fm)))
           end
         elseif control_type == "pong" then
           pending_pong = false -- TODO this functionality is not tested by the test framework
