@@ -1,11 +1,11 @@
 package = "lustre"
-version = "dev-2"
+version = "0.1.0-1"
 source = {
-   url = "git://github.com/FreeMasen/lustre",
-   tag = "dev-2"
+   url = "git://github.com/cosock/lustre",
+   tag = "v0.1.0-1"
 }
 description = {
-   homepage = "https://github.com/FreeMaseen/lustre",
+   homepage = "https://github.com/cosock/lustre",
    license = "MIT"
 }
 dependencies = {
