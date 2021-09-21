@@ -15,6 +15,7 @@ dependencies = {
    "luncheon >= 0.0.0",
    "cosock >= 0.0.0",
    "luasocket == 3.0rc1-2",
+   "logface >= 0.0.2"
 }
 build = {
    type = "builtin",

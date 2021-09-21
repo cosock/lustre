@@ -5,3 +5,4 @@
 *.out
 /lua_modules
 .vsls.json
+/spec/reports

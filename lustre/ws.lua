@@ -35,9 +35,10 @@ WebSocket.__index = WebSocket
 ---@param close_cb function
 ---@return client WebSocket
 ---@return err string|nil
-function WebSocket.client(socket, url, config)
+function WebSocket.client(socket, url, config, ...)
+  local args = {...}
   local _tx, _rx = cosock.channel.new()
-  return setmetatable({
+  local ret = setmetatable({
     is_client = true,
     socket = socket,
     url = url or "/",
@@ -46,6 +47,10 @@ function WebSocket.client(socket, url, config)
     _tx = _tx,
     _rx = _rx,
   }, WebSocket)
+  ret:register_message_cb(args[1])
+  ret:register_error_cb(args[2])
+  ret:register_close_cb(args[3])
+  return ret
 end
 
 function WebSocket.server(socket, config, ...) end
