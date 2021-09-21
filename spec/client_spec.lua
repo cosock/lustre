@@ -71,33 +71,36 @@ local function get_num_test_cases()
   websocket:register_message_cb(function(msg)
     print("Received total cases ", msg.data)
     total_cases = tonumber(msg.data)
+    local success, err = websocket:close()
+    if err then error(err) end
   end)
   websocket:register_error_cb(print)
   local success, err = websocket:connect(HOST, PORT)
-  if err then assert(false, err) end
-  local success, err = websocket:close()
-  if err then assert(false, err) end
-
+  if err then error(err) end
+  print("Connected for case count")
+  while total_cases < 1 do
+    cosock.socket.sleep(0.5)
+  end
 end
 
 describe("autobahn test cases", function()
   it("run", function()
-    print("*********************************************************")
-    print("Getting number of cases")
-    print("*********************************************************")
-    cosock.spawn(get_num_test_cases, "get_num_test_cases")
-    cosock.run()
-    for i = 1, total_cases do
+    cosock.spawn(function()
       print("*********************************************************")
-      print("case: ", i)
+      print("Getting number of cases")
       print("*********************************************************")
-      cosock.spawn(echo_client, "echo")
-      cosock.run()
-    end
-    print("*********************************************************")
-    print("Updating reports")
-    print("*********************************************************")
-    cosock.spawn(update_reports, "report_update")
+      get_num_test_cases()
+      for i = 1, total_cases do
+        print("*********************************************************")
+        print("case: ", i)
+        print("*********************************************************")
+        echo_client()
+      end
+      print("*********************************************************")
+      print("Updating reports")
+      print("*********************************************************")
+      update_reports()
+    end, "autobahn tests")
     cosock.run()
   end)
 end)
