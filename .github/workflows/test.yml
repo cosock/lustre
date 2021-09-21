@@ -20,6 +20,8 @@ jobs:
         run: luarocks install busted
       - name: install luacov
         run: luarocks install luacov
+      - name: install dkjson
+        run: luarocks install dkjson
       - name: luarocks make
         run: luarocks make
       - name: run tests
