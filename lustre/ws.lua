@@ -202,6 +202,8 @@ function WebSocket:receive_loop()
           pending_pong = true
         elseif self.error_cb then
           self.error_cb(string.format("failed to send ping: "..err))
+          self.socket:close()
+          return
         end
       end
       goto continue
