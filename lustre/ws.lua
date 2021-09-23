@@ -188,18 +188,23 @@ function WebSocket:receive_loop()
   local partial_frames = {}
   local received_bytes = 0
   local frames_since_last_ping = 0
-  local pending_pong = false
+  local pending_pongs = 0
   local multiframe_message = false
   local msg_type
   while true do
     local recv, _, err = socket.select({self.socket, self._rx}, nil, self.config._keep_alive)
     if not recv then
       if err == "timeout" then
+        if pending_pongs >= 2 then --TODO max number of pings without a pong could be configurable
+          if self.error_cb then self.error_cb("no response to keep alive ping commands") end
+          self.socket:close()
+          return
+        end
         local fm = Frame.ping():set_mask()
         local sent_bytes, err = send_utils.send_all(self.socket, fm:encode())
         if not err then
-          log.debug("SENT FRAME: \n%s\n\n", utils.table_string(fm, nil, true))
-          pending_pong = true
+          log.debug(string.format("SENT FRAME: \n%s\n\n", utils.table_string(fm, nil, true)))
+          pending_pongs = pending_pongs + 1
         elseif self.error_cb then
           self.error_cb(string.format("failed to send ping: "..err))
           self.socket:close()
@@ -223,7 +228,7 @@ function WebSocket:receive_loop()
           -- TODO retry receiving the frame, give partially received frame to err_cb
           self.error_cb("failed to get frame from socket: " .. err)
         elseif err and err:match("close") then
-          if self.error_cb then self.error_cb(s) end
+          if self.error_cb then self.error_cb(err) end
           return
         elseif self.error_cb then
           self.error_cb("failed to get frame from socket: " .. err)
@@ -252,7 +257,7 @@ function WebSocket:receive_loop()
             log.trace(string.format("SENT FRAME: \n%s\n\n", utils.table_string(fm, nil, true)))
           end
         elseif control_type == "pong" then
-          pending_pong = false -- TODO this functionality is not tested by the test framework
+          pending_pongs = 0 -- TODO this functionality is not tested by the test framework
           frames_since_last_ping = 0
         elseif control_type == "close" then
           self._close_frame_received = true
@@ -270,7 +275,7 @@ function WebSocket:receive_loop()
       -- Should we close because we have been waiting to long for a ping?
       -- We might not need to do this, because it wasn't prioritized
       -- with a test case in autobahn
-      if pending_pong then
+      if pending_pongs > 0 then
         frames_since_last_ping = frames_since_last_ping + 1
         if frames_since_last_ping > self.config._max_frames_without_pong then
           frames_since_last_ping = 0
