@@ -1,4 +1,4 @@
-local CloseCode = require "lustre.frame.close_code"
+local CloseCode = require "lustre.frame.close".CloseCode
 local Config = require "lustre.config"
 local Frame = require "lustre.frame"
 local Handshake = require "lustre.handshake"
