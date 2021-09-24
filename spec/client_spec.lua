@@ -42,17 +42,23 @@ local ALLOWED_FAILURES = {
   ["5.20"] =  true,
 }
 
+local function read_report_file(name)
+  local full_path = string.format("spec/reports/clients/%s", name)
+  local f = assert(io.open(full_path, "r"), string.format("failed to open %s", full_path))
+  return assert(f:read("a"), string.format("nil contents for %s", full_path))
+end
+
 local function collect_failures()
-  local f = assert(io.open("spec/reports/clients/index.json", "r"), "failed to open spec/reports/clients/index.json")
-  local contents = assert(f:read("a"), "nil contents for spec/reports/clients/index.json")
-  local t = assert(dkjson.decode(contents), "Invalid json for spec/reports/clients/index.json")
+  local contents = read_report_file("index.json")
+  local t = assert(dkjson.decode(contents), "Invalid json for index.json")
   local results = assert(t["lua-lustre"], "Invalid object shape, expected `lua-luster`")
   local not_ok = {}
   for k, v in pairs(results) do
     if v.behavior == "FAILED" then
       if not ALLOWED_FAILURES[k] then
         print("Failed", k, v.behavior)
-        table.insert(not_ok, k)
+        v.id = k
+        table.insert(not_ok, v)
       else
         print("Ignoring failure", k)
       end
@@ -134,6 +140,20 @@ local function get_num_test_cases()
   end
 end
 
+local function report_failures(failures)
+  local throw = false
+  local lines = {"Test Failures:"}
+  for _, failure in ipairs(failures) do
+    throw = true
+    print(string.format("Test %s", failure.id))
+    local report = read_report_file(failure.reportfile)
+    table.insert(lines, report)
+  end
+  if #lines > 1 then
+    error(table.concat(lines))
+  end
+end
+
 describe("autobahn test cases", function()
   it("run", function()
     cosock.spawn(function()
@@ -147,9 +167,7 @@ describe("autobahn test cases", function()
       update_reports()
       banner_print("Checking results")
       local not_ok = collect_failures()
-      if #not_ok > 0 then
-        error(string.format("Failed tests: %s", table.concat(not_ok, ',')))
-      end
+      report_failures(not_ok)
     end, "autobahn tests")
     cosock.run()
   end)
