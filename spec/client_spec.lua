@@ -75,13 +75,11 @@ local function banner_print(...)
   print("*********************************************************")
 end
 
-local function echo_client()
+local function echo_client(tx, case)
   local sock, err = socket.tcp()
   if err then assert(false, err) end
   local config = Config.default()
   local websocket = ws.client(sock, "/runCase?case=" .. case .. "&agent=lua-lustre", config)
-  case = case + 1
-  local done = false
   websocket:register_message_cb(function(msg)
     local err
     if msg.type == Message.TEXT then
@@ -91,22 +89,18 @@ local function echo_client()
     end
     if err then print("ECHOERROR: "..err) end
   end):register_error_cb(function(err)
-    print("ERROR: ", err)
-    done = true
+    print(case, "ERROR: ", err)
+    tx:send(case)
   end):register_close_cb(function(arg)
-    print("INFO: Connection closed. ", arg)
-    done = true
+    print(case, "INFO: Connection closed. ", arg)
+    tx:send(case)
   end)
-  print("INFO: Connecting websocket")
+  print(case, "INFO: Connecting websocket")
   local success, err = websocket:connect(HOST, PORT)
   if err then assert(false, err) end
-  while not done do
-    cosock.socket.sleep(0.5)
-  end
 end
 
-local function update_reports()
-  local done = false
+local function update_reports(tx)
   local sock, err = socket.tcp()
   if err then assert(false, err) end
   local config = Config.default()
@@ -115,15 +109,12 @@ local function update_reports()
     function(msg) print("ERR shouldn't have received msg: ", msg.data) end)
   websocket:register_error_cb(print)
   websocket:register_close_cb(function()
-    done = true
+    tx:send()
   end)
   local success, err = websocket:connect(HOST, PORT)
   if err then assert(false, err) end
   local success, err = websocket:close()
   if err then assert(false, err) end
-  while not done do
-    cosock.socket.sleep(0.5)
-  end
 end
 
 local function get_num_test_cases()
@@ -151,7 +142,6 @@ local function report_failures(failures)
   local lines = {"Test Failures:"}
   for _, failure in ipairs(failures) do
     throw = true
-    print(string.format("Test %s", failure.id))
     local report = read_report_file(failure.reportfile)
     table.insert(lines, report)
   end
@@ -165,12 +155,22 @@ describe("autobahn test cases", function()
     cosock.spawn(function()
       banner_print("Getting number of cases")
       get_num_test_cases()
-      for i = 1, total_cases do
-        banner_print("case: ", i)
-        echo_client()
+      local tx, rx = cosock.channel.new()
+      for i = 1, total_cases + 4 do
+        if i <= total_cases then
+          cosock.spawn(function()
+            local i = i
+            echo_client(tx, i)
+          end, string.format("test %s", i))
+        end
+        if i > 4 then
+          local finished = rx:receive()
+          banner_print("case: ", finished)
+        end
       end
       banner_print("Updating reports")
-      update_reports()
+      update_reports(tx)
+      rx:receive()
       banner_print("Checking results")
       local not_ok = collect_failures()
       report_failures(not_ok)
