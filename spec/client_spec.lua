@@ -90,10 +90,10 @@ local function echo_client(tx, case)
     if err then print("ECHOERROR: "..err) end
   end):register_error_cb(function(err)
     print(case, "ERROR: ", err)
-    tx:send(case)
+    tx:send(1)
   end):register_close_cb(function(arg)
     print(case, "INFO: Connection closed. ", arg)
-    tx:send(case)
+    tx:send(1)
   end)
   print(case, "INFO: Connecting websocket")
   local success, err = websocket:connect(HOST, PORT)
@@ -109,7 +109,7 @@ local function update_reports(tx)
     function(msg) print("ERR shouldn't have received msg: ", msg.data) end)
   websocket:register_error_cb(print)
   websocket:register_close_cb(function()
-    tx:send()
+    tx:send(1)
   end)
   local success, err = websocket:connect(HOST, PORT)
   if err then assert(false, err) end
@@ -117,24 +117,22 @@ local function update_reports(tx)
   if err then assert(false, err) end
 end
 
-local function get_num_test_cases()
+local function get_num_test_cases(tx)
   local sock, err = socket.tcp()
   if err then assert(false, err) end
   local config = Config.default()
   local websocket = ws.client(sock, "/getCaseCount", config)
   websocket:register_message_cb(function(msg)
     print("Received total cases ", msg.data)
-    total_cases = tonumber(msg.data)
+    local total_cases = tonumber(msg.data)
     local success, err = websocket:close()
     if err then error(err) end
+    tx:send(total_cases)
   end)
   websocket:register_error_cb(print)
   local success, err = websocket:connect(HOST, PORT)
   if err then error(err) end
   print("Connected for case count")
-  while total_cases < 1 do
-    cosock.socket.sleep(0.5)
-  end
 end
 
 local function report_failures(failures)
@@ -154,19 +152,13 @@ describe("autobahn test cases", function()
   it("run", function()
     cosock.spawn(function()
       banner_print("Getting number of cases")
-      get_num_test_cases()
       local tx, rx = cosock.channel.new()
-      for i = 1, total_cases + 4 do
-        if i <= total_cases then
-          cosock.spawn(function()
-            local i = i
-            echo_client(tx, i)
-          end, string.format("test %s", i))
-        end
-        if i > 4 then
-          local finished = rx:receive()
-          banner_print("case: ", finished)
-        end
+      get_num_test_cases(tx)
+      local total_cases = assert(rx:receive())
+      for i = 1, total_cases do
+        echo_client(tx, i)
+        assert(rx:receive())
+        banner_print("case: ", i)
       end
       banner_print("Updating reports")
       update_reports(tx)
