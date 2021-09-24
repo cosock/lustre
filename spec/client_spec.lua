@@ -24,22 +24,9 @@ local dkjson = require "dkjson"
 
 local HOST = "127.0.0.1"
 local PORT = 9001
-local case = 1
-local total_cases = 0
 local ALLOWED_FAILURES = {
   ["1.1.7"] = true,
-  ["1.1.8"] = true,
-  ["1.2.1"] = true,
-  ["1.2.2"] = true,
   ["1.2.7"] = true,
-  ["1.2.8"] = true,
-  ["2.2"]   = true,
-  ["2.6"]   = true,
-  ["2.11"]   = true,
-  ["5.5"]   = true,
-  ["5.8"]   = true,
-  ["5.19"] =  true,
-  ["5.20"] =  true,
 }
 
 local function read_report_file(name)
