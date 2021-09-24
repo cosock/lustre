@@ -81,6 +81,7 @@ local function echo_client()
   local config = Config.default()
   local websocket = ws.client(sock, "/runCase?case=" .. case .. "&agent=lua-lustre", config)
   case = case + 1
+  local done = false
   websocket:register_message_cb(function(msg)
     local err
     if msg.type == Message.TEXT then
@@ -91,12 +92,17 @@ local function echo_client()
     if err then print("ECHOERROR: "..err) end
   end):register_error_cb(function(err)
     print("ERROR: ", err)
+    done = true
   end):register_close_cb(function(arg)
     print("INFO: Connection closed. ", arg)
+    done = true
   end)
   print("INFO: Connecting websocket")
   local success, err = websocket:connect(HOST, PORT)
   if err then assert(false, err) end
+  while not done do
+    cosock.socket.sleep(0.5)
+  end
 end
 
 local function update_reports()
