@@ -1,4 +1,8 @@
 local Key = require "lustre.handshake.key"
+
+local Request = require "luncheon.request"
+local Response = require "luncheon.response"
+
 ---@class Handshake
 ---@field protocols string[] List of requested protocols
 ---@field extensions table[] List of requested extensions
@@ -13,6 +17,25 @@ function Handshake.client(key, protocols, extensions)
     extensions = extensions or {},
     key = key or Key.generate_key(),
   }, Handshake)
+end
+function Handshake:send(socket, url, host)
+  local req = Request.new("GET", url, socket)
+  req:add_header("Connection", "Upgrade")
+  req:add_header("Upgrade", "websocket")
+  req:add_header("User-Agent", "lua-lustre")
+  req:add_header("Sec-Websocket-Version", 13)
+  req:add_header("Sec-Websocket-Key", self.key)
+  req:add_header("Host", host)
+  if next(self.protocols) then
+    req:add_header("Sec-Websocket-Protocol", table.concat(self.protocols, ","))
+  end
+  local s, err = req:send()
+  if not s then return "handshake request failure: " .. err end
+  local res, err = Response.tcp_source(socket)
+  if not res then return nil, "Upgrade response failure: " .. err end
+  local success, err = self:validate_accept(res)
+  if not success then return nil, "invalid handshake: " .. err end
+  return 1
 end
 
 ---Validate the accept header returned by the

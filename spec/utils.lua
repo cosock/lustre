@@ -10,14 +10,6 @@ local function deep_equal(lhs, rhs)
   return lhs == rhs
 end
 
-local function assert_eq(lhs, rhs, msg)
-  if not deep_equal(lhs, rhs) then
-    local template = "%q ~= %q"
-    if msg then template = template .. " %s" end
-    error(string.format(template, table_string(lhs), table_string(rhs), table_string(msg)), 2)
-  end
-end
-
 local function assert_ne(lhs, rhs, msg)
   if deep_equal(lhs, rhs) then
     local template = "%q == %q"
@@ -28,7 +20,6 @@ end
 
 return {
   assert_fmt = assert_fmt,
-  assert_eq = assert_eq,
   deep_equal = deep_equal,
   assert_ne = assert_ne,
 }
