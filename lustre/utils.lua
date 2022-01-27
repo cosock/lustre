@@ -1,12 +1,17 @@
 --- Print binary string as ascii hex
 ---@param str string
 ---@return string ascii hex string
-function get_print_safe_string(str)
+function get_print_safe_string(str, limit)
+  local ret
   if str:match("^[%g ]+$") ~= nil then
-    return string.format("%s", str)
+    ret = string.format("%s", str)
   else
-    return string.format(string.rep("\\x%02X", #str), string.byte(str, 1, #str))
+    ret = string.format(string.rep("\\x%02X", #str), string.byte(str, 1, #str))
   end
+  if limit and #str > limit then
+    return string.sub(ret, 1, limit).."..."
+  end
+  return ret
 end
 
 local key_order_cmp = function(key1, key2)
@@ -25,7 +30,7 @@ end
 
 local stringify_table_helper
 
-stringify_table_helper = function(val, name, multi_line, indent, previously_printed)
+stringify_table_helper = function(val, name, multi_line, indent, previously_printed, str_limit)
   local tabStr = multi_line and string.rep(" ", indent) or ""
 
   if name then tabStr = tabStr .. tostring(name) .. "=" end
@@ -46,11 +51,11 @@ stringify_table_helper = function(val, name, multi_line, indent, previously_prin
         previously_printed[val] = name
         if #val > 0 and type(k) == "number" then
           tabStr = tabStr ..
-                     stringify_table_helper(v, nil, multi_line, indent + 2, previously_printed) ..
+                     stringify_table_helper(v, nil, multi_line, indent + 2, previously_printed, str_limit) ..
                      ", " .. multi_line_str
         else
           tabStr = tabStr ..
-                     stringify_table_helper(v, k, multi_line, indent + 2, previously_printed) ..
+                     stringify_table_helper(v, k, multi_line, indent + 2, previously_printed, str_limit) ..
                      ", " .. multi_line_str
         end
       end
@@ -67,7 +72,7 @@ stringify_table_helper = function(val, name, multi_line, indent, previously_prin
   elseif type(val) == "number" then
     tabStr = tabStr .. tostring(val)
   elseif type(val) == "string" then
-    tabStr = tabStr .. "\"" .. get_print_safe_string(val) .. "\""
+    tabStr = tabStr .. "\"" .. get_print_safe_string(val, str_limit) .. "\""
   elseif type(val) == "boolean" then
     tabStr = tabStr .. (val and "true" or "false")
   elseif type(val) == "function" then
@@ -84,8 +89,8 @@ end
 ---@param name string Print a name along with value [Optional]
 ---@param multi_line boolean use newlines to provide a more easily human readable string [Optional]
 ---@returns string String representation of `val`
-function table_string(val, name, multi_line)
-  return stringify_table_helper(val, name, multi_line, 0, {})
+function table_string(val, name, multi_line, str_limit)
+  return stringify_table_helper(val, name, multi_line, 0, {}, str_limit)
 end
 
 return {

@@ -46,7 +46,8 @@ function WebSocket.client(socket, url, config, ...)
     config = config or Config.default(),
     _tx = _tx,
     _rx = _rx,
-    id = math.random()
+    id = math.random(),
+    state = "Active",
   }, WebSocket)
   ret:register_message_cb(args[1])
   ret:register_error_cb(args[2])
@@ -165,9 +166,16 @@ function WebSocket:accept() end
 ---@return success number 1 if succss
 ---@return err string|nil
 function WebSocket:close(close_code, reason)
-  local close_frame = Frame.close(close_code, reason):set_mask() -- TODO client vs server
-  local suc, err = self._tx:send(close_frame)
-  if not suc then return nil, "channel error:" .. err end
+  log.debug('sending close message', close_code, reason)
+  log.debug(debug.traceback())
+  if self.state == "Active" then
+    local close_frame = Frame.close(close_code, reason):set_mask() -- TODO client vs server
+    local suc, err = self._tx:send(close_frame)
+    if not suc then return nil, "channel error:" .. err end
+  elseif self.state == "ClosedBySelf" then
+    self.state = "CloseAcknowledged"
+  end
+
   return 1
 end
 
@@ -184,11 +192,14 @@ function WebSocket:receive_loop()
   while true do
     log.trace(self.id, "loop top")
     local recv, _, err = socket.select({self.socket, self._rx}, nil, self.config._keep_alive)
+    log.debug(recv and "recv" or "~recv", err or "")
     if not recv then
       log.debug(self.id, "selected err:", err)
       if err == "timeout" then
         if pending_pongs >= 2 then --TODO max number of pings without a pong could be configurable
           if self.error_cb then self.error_cb("no response to keep alive ping commands") end
+          self.state = "Terminated"
+          log.debug("Closing socket")
           self.socket:close()
           return
         end
@@ -199,6 +210,8 @@ function WebSocket:receive_loop()
           pending_pongs = pending_pongs + 1
         elseif self.error_cb then
           self.error_cb(string.format("failed to send ping: "..err))
+          self.state = "Terminated"
+          log.debug("Closing socket")
           self.socket:close()
           return
         end
@@ -210,36 +223,36 @@ function WebSocket:receive_loop()
       local frame, err = Frame.from_stream(self.socket)
       log.debug(self.id, "build frame", frame or err)
       if not frame then
-        if self._close_frame_sent then
-          -- TODO this error case is a little weird, I think it happens if the server doesn't close properly
-          if self.error_cb then self.error_cb("Failed to receive frame after sending close frame") end
-          self.socket:close()
-          return
-        elseif err == "invalid opcode" or err == "invalid rsv bit" then
-          log.trace(self.id, "PROTOCOL ERR: received frame with " .. err)
+        log.info("error building frame", err)
+        if err == "invalid opcode" or err == "invalid rsv bit" then
+          log.warn(self.id, "PROTOCOL ERR: received frame with " .. err)
           self:close(CloseCode.protocol(), err)
+          self.state = "ClosedBySelf"
         elseif err == "timeout" and self.error_cb then
           -- TODO retry receiving the frame, give partially received frame to err_cb
           self.error_cb("failed to get frame from socket: " .. err)
         elseif err and err:match("close") then
-          if self.error_cb then self.error_cb(err) end
+          if self.state == "Active" and self.error_cb then self.error_cb(err) end
+          self.state = "Terminated"
           return
         elseif self.error_cb then
           self.error_cb("failed to get frame from socket: " .. err)
         end
         goto continue
       end
-      log.debug(self.id, string.format("RECEIVED FRAME: \n%s\n\n", utils.table_string(frame, nil, true)))
+      log.debug(self.id, string.format("RECEIVED FRAME: \n%s\n\n", utils.table_string(frame, nil, true, 100)))
       if frame:is_control() then
         if not frame:is_final() then
           log.trace(self.id, "PROTOCOL ERR: received non final control frame")
           self:close(CloseCode.protocol())
+          self.state = "ClosedBySelf"
           goto continue
         end
         local control_type = frame.header.opcode.sub
         if frame:payload_len() > Frame.MAX_CONTROL_FRAME_LENGTH then
           log.trace(self.id, "PROTOCOL ERR: received control frame that is too big")
           self:close(CloseCode.protocol())
+          self.state = "ClosedBySelf"
           goto continue
         end
         if control_type == "ping" then
@@ -254,13 +267,11 @@ function WebSocket:receive_loop()
           pending_pongs = 0 -- TODO this functionality is not tested by the test framework
           frames_since_last_ping = 0
         elseif control_type == "close" then
-          self._close_frame_received = true
-          if not self._close_frame_sent then
-            self:close(CloseCode.decode(frame.payload))
-          else
-            log.trace(self.id, "server copmleted our close handshake")
-            self.socket:close()
-            return
+          self:close(CloseCode.decode(frame.payload))
+          if self.state == "ClosedBySelf" then
+            self.state = "CloseAcknowledged"
+          elseif self.state == "Active" then
+            self.state = "ClosedByPeer"
           end
         end
         goto continue
@@ -275,6 +286,7 @@ function WebSocket:receive_loop()
           frames_since_last_ping = 0
           log.trace(self.id, "PROTOCOL ERR: received too many frames while waiting for pong")
           local err = self:close(CloseCode.policy(), "no pong after ping")
+          self.state = "ClosedBySelf"
         end
       end
 
@@ -283,6 +295,7 @@ function WebSocket:receive_loop()
         msg_type = "text"
         if multiframe_message then -- we expected a continuation message
           self:close(CloseCode.protocol(), "expected " .. msg_type .. "continuation frame")
+          self.state = "ClosedBySelf"
           goto continue
         end
         if not frame:is_final() then multiframe_message = true end
@@ -290,11 +303,14 @@ function WebSocket:receive_loop()
         msg_type = "binary"
         if multiframe_message then
           self:close(CloseCode.protocol(), "expected " .. msg_type .. "continuation frame")
+          self.state = "ClosedBySelf"
           goto continue
         end
         if not frame:is_final() then multiframe_message = true end
       elseif frame.header.opcode.sub == "continue" and not multiframe_message then
+        
         self:close(CloseCode.protocol(), "unexpected continue frame")
+        self.state = "ClosedBySelf"
         goto continue
       end
       -- aggregate payloads
@@ -323,22 +339,31 @@ function WebSocket:receive_loop()
     elseif recv[1] == self._rx then -- frames we need to send on the socket
       log.debug(self.id, "selected channel")
       local frame, err = self._rx:receive()
+      log.debug("received from rx")
       if not frame then
         if self.error_cb then self.error_cb("channel receive failure: " .. err) end
         goto continue
       end
-
-      local sent_bytes, err = send_utils.send_all(self.socket, frame:encode())
+      log.debug("encoding frame: ", cosock.socket.gettime())
+      local bytes = frame:encode()
+      log.debug("sending all bytes", cosock.socket.gettime())
+      local sent_bytes, err = send_utils.send_all(self.socket, bytes)
+      log.debug("sent bytes", cosock.socket.gettime())
       if not sent_bytes then
         if self.error_cb then self.error_cb("socket send failure: " .. err) end
         goto continue
       end
-      log.debug(self.id, string.format("SENT FRAME: \n%s\n\n", utils.table_string(frame, nil, true)))
+      log.debug(self.id, string.format("SENT FRAME: \n%s\n\n", utils.table_string(frame, nil, true, 100)))
       
       if frame:is_control() and frame.header.opcode.sub == "close" then
-        self._close_frame_sent = true
-        if self.close_cb then self.close_cb(reason) end
-        if self._close_frame_received then
+        if self.state == "Active" then
+          self.state = "ClosedBySelf"
+        elseif self.state == "ClosedByPeer" then
+          self.state = "CloseAcknowledged"
+        end
+        if self.close_cb then self.close_cb(frame.payload) end
+        if self.state == "CloseAcknowledged" then
+          log.debug("Closing socket")
           self.socket:close()
           log.trace(self.id, "completed server close handshake")
           return

@@ -113,28 +113,38 @@ end
 ---
 ---note: this applies the mask in place
 function Frame:apply_mask()
+  local cosock = require "cosock"
+  log.debug("Frame:apply_mask", cosock.socket.gettime())
   if not self.header.mask then return nil, "No mask to apply" end
-  local unmasked = ""
-  for i = 0, #self.payload - 1 do
-    local byte = string.byte(self.payload, i + 1, i + 1)
+  -- local unmasked = ""
+  local i = 0
+  self.payload = self.payload:gsub(".", function(ch)
+    local byte = ch:byte(1)
     local char = byte ~ self.header.mask[(i % 4) + 1]
-    unmasked = unmasked .. string.char(char)
-  end
-  self.payload = unmasked
+    i = i + 1
+    return string.char(char)
+  end)
+  log.debug("masked", cosock.socket.gettime())
   self._masked_payload = not self._masked_payload
 end
 
 function Frame:encode()
+  log.debug("Frame:encode")
   local ret = self.header:encode()
   if not self:payload_is_masked() then
     self:apply_mask()
     ret = ret .. self.payload
-    self:apply_mask() -- undo masking
+    -- self:apply_mask() -- undo masking
   else
     ret = ret .. self.payload
   end
 
   return ret
+end
+
+function Frame:should_continue()
+  return self.header.opcode:can_continue()
+    and not self:is_final()
 end
 
 return Frame

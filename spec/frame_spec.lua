@@ -2,7 +2,9 @@ local utils = require "spec.utils"
 local Frame = require "lustre.frame"
 local FrameHeader = require "lustre.frame.frame_header"
 local OpCode = require "lustre.frame.opcode"
-local CloseCode = require"lustre.frame.close".CloseCode
+local CloseCode = require "lustre.frame.close".CloseCode
+local MockSocket = require "spec.mock_socket".MockSocket
+local cosock = require "cosock"
 
 describe("Frame", function()
   describe("apply_mask", function()
@@ -24,13 +26,18 @@ describe("Frame", function()
       assert.are(f.payload, payload)
     end)
   end)
-  it("full round trip matches", function()
-    local bytes = string.char(0x80 | 2, 0x80 | 100, 42, 42, 42, 42) .. string.rep("a", 100)
+  it("full round trip matches #a", function()
+    local bytes = string.char(0x80 | 2, 0x80 | 100, 42, 42, 42, 42) .. string.rep("a", 2048)
+    local dec_start = cosock.socket.gettime()
     local f = assert(Frame.decode(bytes))
+    local dec_end = cosock.socket.gettime()
     assert.are(#f.payload, f.header:payload_len())
     assert.are(f:len(), #bytes)
     utils.assert_fmt(f.header:is_masked(), "Not masked...")
+    local enc_start = cosock.socket.gettime()
     local back = f:encode()
+    local enc_end = cosock.socket.gettime()
+    print("dec: ", dec_end - dec_start, "enc: ", enc_end - enc_start)
     assert.are(bytes, back)
     local f2 = assert(Frame.decode(back))
 
@@ -49,6 +56,15 @@ describe("Frame", function()
       local f = Frame.close(CloseCode.normal())
       assert.are(f.header.opcode, OpCode.close())
       assert.are(f.payload, CloseCode.normal():encode())
+    end)
+  end)
+  describe("decode", function()
+    it("ping #t", function()
+      local f = assert(Frame.from_stream(MockSocket.new({
+        string.char(0x89, 0x02),
+        string.char(0x01, 0x02),
+      })))
+      print(require("lustre.utils").table_string(f))
     end)
   end)
 end)

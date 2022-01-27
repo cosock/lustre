@@ -4,6 +4,12 @@
 ---@field public value number|nil
 local OpCode = {}
 OpCode.__index = OpCode
+OpCode.__tostring = function(self)
+  if self.sub then
+    return string.format("%s:%s", self.type, self.sub)
+  end
+  return self.type
+end
 
 function OpCode.decode(n)
   local ret = {}
@@ -68,6 +74,16 @@ function OpCode.binary() return OpCode.from("data", "binary") end
 
 function OpCode.from(ty, sub, value)
   return setmetatable({type = ty, sub = sub, value = value}, OpCode)
+end
+
+function OpCode:is_continue()
+  return self.sub == "continue"
+end
+
+function OpCode:can_continue()
+  return self.sub == "continue"
+    or self.sub == "text"
+    or self.sub == "binary"
 end
 
 return OpCode
