@@ -89,10 +89,81 @@ end
 ---@param name string Print a name along with value [Optional]
 ---@param multi_line boolean use newlines to provide a more easily human readable string [Optional]
 ---@returns string String representation of `val`
-function table_string(val, name, multi_line, str_limit)
+local function table_string(val, name, multi_line, str_limit)
   return stringify_table_helper(val, name, multi_line, 0, {}, str_limit)
 end
 
+local function has_continue_bits(ch)
+  return ch & 0x80 == 0x80
+end
+
+local function to_bits(ch)
+  local bits = {}
+  while ch > 0 do
+    if (ch & 1) > 0 then
+      table.insert(bits, '1')
+    else
+      table.insert(bits, '0')
+    end
+    ch = ch >> 1
+  end
+  while #bits < 8 do
+    table.insert(bits, '0')
+  end
+  return string.reverse(table.concat(bits, ' '))
+end
+
+local function validate_utf8(s)
+  local i = 1
+  while i <= #s do
+    local bytes = table.pack(s:byte(i, i+4))
+    print(i, "checking: ", to_bits(bytes[1]))
+    if bytes[1] == 0xFE or bytes[1] == 0xFF then
+      return nil, "Invalid UTF-8 Byte"
+    end
+    if bytes[1] & 0xF0 == 0xF0 then
+      print('found 4 byte character')
+      if #bytes < 4 then
+        return nil, 'UTF-8 Sequence Too Short'
+      end
+      if not (has_continue_bits(bytes[2])
+         and has_continue_bits(bytes[3])
+         and has_continue_bits(bytes[4])) then
+        return nil, 'Invalid UTF-8 Sequence Continue'
+      end
+      i = i + 4
+    elseif bytes[1] & 224 == 224 then
+      print("found 3 byte character")
+      if #bytes < 3 then
+        return nil, 'UTF-8 Sequence Too Short'
+      end
+      if not (has_continue_bits(bytes[2])
+         and has_continue_bits(bytes[3])) then
+        return nil, 'Invalid UTF-8 Sequence Continue'
+      end
+      i = i + 3
+    elseif bytes[1] & 0xC0 == 0xC0 then
+      print("found 2 byte character")
+      if #bytes < 2 then
+        return nil, 'UTF-8 Sequence Too Short'
+      end
+      if not has_continue_bits(bytes[2]) then
+        return nil, 'Invalid UTF-8 Sequence Continue'
+      end
+      i = i + 2
+    else
+      print("found potential 1 byte character")
+      if bytes[1] & 0x80 ~= 0 then
+        print("1 byte character can't have 128 set")
+        return nil, 'Invalid UTF-8 Sequence Start'
+      end
+      i = i + 1
+    end
+  end
+  return 1
+end
+
 return {
-  table_string = table_string
+  table_string = table_string,
+  validate_utf8 = validate_utf8,
 }

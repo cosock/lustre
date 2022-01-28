@@ -327,13 +327,23 @@ function WebSocket:receive_loop()
       else
         multiframe_message = false
       end
-
+ 
       -- coalesce frame payloads into single message payload
       local full_payload = frame.payload
       if next(partial_frames) then
         table.insert(partial_frames, frame.payload)
         full_payload = table.concat(partial_frames)
         partial_frames = {}
+      end
+      if msg_type == "text" then
+        log.debug('checking for valid utf8')
+        local valid_utf8, utf8_err = utils.validate_utf8(full_payload)
+        print('valid?', valid_utf8, utf8_err)
+        if not valid_utf8 then
+          self:close(CloseCode.invalid(), utf8_err)
+          self.state = "ClosedBySelf"
+          goto continue
+        end
       end
       if self.message_cb then self.message_cb(Message.new(msg_type, full_payload)) end
     elseif recv[1] == self._rx then -- frames we need to send on the socket

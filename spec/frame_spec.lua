@@ -37,7 +37,6 @@ describe("Frame", function()
     local enc_start = cosock.socket.gettime()
     local back = f:encode()
     local enc_end = cosock.socket.gettime()
-    print("dec: ", dec_end - dec_start, "enc: ", enc_end - enc_start)
     assert.are(bytes, back)
     local f2 = assert(Frame.decode(back))
 
@@ -64,7 +63,6 @@ describe("Frame", function()
         string.char(0x89, 0x02),
         string.char(0x01, 0x02),
       })))
-      print(require("lustre.utils").table_string(f))
     end)
   end)
 end)
