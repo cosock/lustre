@@ -87,6 +87,10 @@ function Frame:is_final() return self.header.fin end
 
 function Frame:is_control() return self.header.opcode.type == "control" end
 
+function Frame:is_close() 
+  return self:is_control() and self.header.opcode.sub == "close"
+end
+
 local seeded = false
 local function seed_once()
   if seeded then return end

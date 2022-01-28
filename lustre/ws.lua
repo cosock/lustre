@@ -350,12 +350,14 @@ function WebSocket:receive_loop()
       local sent_bytes, err = send_utils.send_all(self.socket, bytes)
       log.debug("sent bytes", cosock.socket.gettime())
       if not sent_bytes then
-        if self.error_cb then self.error_cb("socket send failure: " .. err) end
+        if err ~= "closed" or self.state ~= "Active" then
+          if self.error_cb then self.error_cb("socket send failure: " .. err) end
+        end
         goto continue
       end
       log.debug(self.id, string.format("SENT FRAME: \n%s\n\n", utils.table_string(frame, nil, true, 100)))
       
-      if frame:is_control() and frame.header.opcode.sub == "close" then
+      if frame:is_close() then
         if self.state == "Active" then
           self.state = "ClosedBySelf"
         elseif self.state == "ClosedByPeer" then
