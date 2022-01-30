@@ -33,5 +33,7 @@ jobs:
           wstest -d -m fuzzingserver -s /config/fuzzingserver.json \
           && sleep 3 \
           && busted -c
-        timeout-minutes: 3
+        timeout-minutes: 5
+        env:
+          LUALOG=debug
       - uses: codecov/codecov-action@v2.1.0
