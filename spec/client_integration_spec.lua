@@ -186,11 +186,11 @@ describe("autobahn test cases", function()
           err_msgs[i] = (err_msgs[i] or "") .. "\t" ..err
         end
       end
-      -- banner_print("Updating reports")
-      -- assert(update_reports())
-      -- banner_print("Checking results")
-      -- local not_ok = collect_failures(err_msgs)
-      -- report_failures(not_ok)
+      banner_print("Updating reports")
+      assert(update_reports())
+      banner_print("Checking results")
+      local not_ok = collect_failures(err_msgs)
+      report_failures(not_ok)
     end, "autobahn tests")
     cosock.run()
   end)
