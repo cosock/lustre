@@ -3,6 +3,8 @@
 
 /.luarocks
 *.out
+*.log
 /lua_modules
 .vsls.json
 /spec/reports
+/utf8

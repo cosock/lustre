@@ -78,11 +78,15 @@ function WebSocket:register_close_cb(cb)
 end
 
 ---@param text string
----@return err string|nil
+---@return number, string|nil
 function WebSocket:send_text(text)
   local data_idx = 1
   local frames_sent = 0
-  if self._close_frame_sent then return "currently closing connection" end
+  if self.state ~= "Active" then return nil, "currently closing connection" end
+  local valid_utf8, utf8_err = utils.validate_utf8(text)
+  if not valid_utf8 then
+    return nil, utf8_err
+  end
   repeat -- TODO fragmentation while sending has not been tested
     local header = FrameHeader.default()
     local payload = ""
@@ -97,15 +101,16 @@ function WebSocket:send_text(text)
     local frame = Frame.from_parts(header, payload)
     frame:set_mask() -- todo handle client vs server
     local suc, err = self._tx:send(frame)
-    if err then return "channel error:" .. err end
+    if err then return nil, "channel error:" .. err end
     data_idx = data_idx + frame:payload_len()
     frames_sent = frames_sent + 1
   until text:len() <= data_idx
+  return 1
 end
 
 ---@param bytes string 
 ---@return bytes_sent number
----@return err string|nil
+---@return number, string|nil
 function WebSocket:send_bytes(bytes)
   local data_idx = 1
   local frames_sent = 0
@@ -124,20 +129,20 @@ function WebSocket:send_bytes(bytes)
     local frame = Frame.from_parts(header, payload)
     frame:set_mask() -- todo handle client vs server
     local suc, err = self._tx:send(frame)
-    if err then return "channel error:" .. err end
+    if err then return nil, "channel error:" .. err end
     data_idx = data_idx + frame:payload_len()
     frames_sent = frames_sent + 1
   until bytes:len() <= data_idx
+  return 1
 end
 
 --TODO remove the fragmentation code duplication in the `send_text` and `send_bytes` apis
 --TODO  Could perhaps remove those apis entirely.
 ---@param message Message
----@return err string|nil
+---@return number, string|nil
 function WebSocket:send(message) return nil, "not implemented" end
 
----@return success number 1 if handshake was successful
----@return err string|nil
+---@return number, string|nil
 function WebSocket:connect(host, port)
   log.trace(self.id, "WebSocket:connect", host, port)
   if not self.is_client then -- todo use metatables to enforce this
@@ -338,8 +343,9 @@ function WebSocket:receive_loop()
       if msg_type == "text" then
         log.debug('checking for valid utf8')
         local valid_utf8, utf8_err = utils.validate_utf8(full_payload)
-        print('valid?', valid_utf8, utf8_err)
+        log.trace('valid?', valid_utf8, utf8_err)
         if not valid_utf8 then
+          log.warn("Received invalid utf8 text message, closing", utf8_err)
           self:close(CloseCode.invalid(), utf8_err)
           self.state = "ClosedBySelf"
           goto continue
