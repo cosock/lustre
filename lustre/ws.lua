@@ -366,7 +366,11 @@ function WebSocket:receive_loop()
       local sent_bytes, err = send_utils.send_all(self.socket, bytes)
       log.debug("sent bytes", cosock.socket.gettime())
       if not sent_bytes then
-        if err ~= "closed" or self.state ~= "Active" then
+        local closed = err:match("close")
+        if closed and self.state == "Active" then
+          if self.error_cb then self.error_cb("socket send failure: " .. err) end
+        end
+        if not closed then
           if self.error_cb then self.error_cb("socket send failure: " .. err) end
         end
         goto continue
