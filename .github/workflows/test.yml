@@ -34,6 +34,6 @@ jobs:
           && sleep 3 \
           && busted -c
         env:
-          # LUALOG: debug
+          LUALOG: "" #debug
           # LUSTRE_TEST_CASE: 
       - uses: codecov/codecov-action@v2.1.0
