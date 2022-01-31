@@ -70,7 +70,10 @@ local function collect_failures(err_msgs)
     if not_ok[report.id] then
       not_ok[report.id] = { not_ok[report.id], msg }
     else
-      not_ok[report.id] = msg
+      not_ok[report.id] = {
+        case = report.case,
+        msg = msg,
+      }
     end
   end
   return not_ok
