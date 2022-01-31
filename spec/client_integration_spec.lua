@@ -61,7 +61,6 @@ local function collect_failures(err_msgs)
         result = reports[k].result,
         expected = reports[k].expected,
         received = reports[k].received,
-        case = reports[k].case,
       }
     end
   end
@@ -70,10 +69,7 @@ local function collect_failures(err_msgs)
     if not_ok[report.id] then
       not_ok[report.id] = { not_ok[report.id], msg }
     else
-      not_ok[report.id] = {
-        case = report.case,
-        msg = msg,
-      }
+      not_ok[report.id] = msg
     end
   end
   return not_ok
@@ -94,14 +90,14 @@ local function echo_client(case)
   websocket.id = case
   local closed = false
   local tx, rx = cosock.channel.new()
-  local s, err
+  local err
   websocket:register_message_cb(function(msg)
     if msg.type == Message.TEXT then
-      s, err = websocket:send_text(msg.data)
+      err = websocket:send_text(msg.data)
     else
-      s, err = websocket:send_bytes(msg.data)
+      err = websocket:send_bytes(msg.data)
     end
-    if not s then
+    if err then
       tx:send({ err = string.format("%s ECHOERROR: %s", case, err)})
     end
   end):register_error_cb(function(err)
