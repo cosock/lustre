@@ -33,6 +33,7 @@ jobs:
           wstest -d -m fuzzingserver -s /config/fuzzingserver.json \
           && sleep 3 \
           && busted -c
+        timeout-minutes: 15
         env:
           LUALOG: debug
           LUSTRE_TEST_CASE: 131
