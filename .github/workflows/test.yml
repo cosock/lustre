@@ -32,7 +32,8 @@ jobs:
           -d crossbario/autobahn-testsuite \
           wstest -d -m fuzzingserver -s /config/fuzzingserver.json \
           && sleep 3 \
-          && busted -c
+          && busted ./spec/client_integration_spec.lua
+          # && busted -c
         timeout-minutes: 15
         env:
           LUALOG: debug
