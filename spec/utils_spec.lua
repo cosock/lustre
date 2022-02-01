@@ -34,7 +34,7 @@ describe("utils", function()
         it("will validate `κόσμε`", function()
             local chars = "κόσμε"
             local s, e = utils.validate_utf8(chars)
-            assert(s, string.format("failed to validate cjk sample: %s", e))
+            assert(s, string.format("failed to validate greek sample: %s", e))
         end)
         it("will fail `κόσμε���edited` #d", function()
             local input = string.char(0xce,0xba,0xe1,0xbd,0xb9,0xcf,0x83,0xce,0xbc,0xce,0xb5,0xed,0xa0,0x80,0x65,0x64,0x69,0x74,0x65,0x64)
