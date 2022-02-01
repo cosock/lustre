@@ -92,14 +92,14 @@ local function echo_client(case)
   websocket.id = case
   local closed = false
   local tx, rx = cosock.channel.new()
-  local err
+  local s, err
   websocket:register_message_cb(function(msg)
     if msg.type == Message.TEXT then
-      err = websocket:send_text(msg.data)
+      s, err = websocket:send_text(msg.data)
     else
-      err = websocket:send_bytes(msg.data)
+      s, err = websocket:send_bytes(msg.data)
     end
-    if err then
+    if not s then
       tx:send({ err = string.format("%s ECHOERROR: %s", case, err)})
     end
   end):register_error_cb(function(err)
