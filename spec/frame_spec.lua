@@ -25,7 +25,7 @@ describe("Frame", function()
       f:apply_mask()
       assert.are(f.payload, payload)
     end)
-    it("round tripping with mask will remain unchanged large payload #W", function()
+    it("round tripping with mask will remain unchanged large payload #large-payload", function()
       local header = FrameHeader:default():set_mask({1, 2, 3, 4})
       local payload = string.rep(
           string.rep("BAsd7&jh23", 2),
