@@ -25,7 +25,7 @@ jobs:
       - name: luarocks make
         run: luarocks make
       - name: run unit tests
-        run: busted -c --exclude-pattern ./spec/client_integration_spec.lua
+        run: busted -c --exclude-tags conformance
         timeout-minutes: 5
       - name: run conformance tests
         run: |
@@ -35,7 +35,7 @@ jobs:
           -d crossbario/autobahn-testsuite \
           wstest -d -m fuzzingserver -s /config/fuzzingserver.json \
           && sleep 3 \
-          && busted -c ./spec/client_integration_spec.lua
+          && busted -c -t conformance
         timeout-minutes: 15
         env:
           LUALOG: debug

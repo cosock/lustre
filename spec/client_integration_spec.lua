@@ -166,7 +166,7 @@ local function report_failures(failures)
   end
 end
 
-describe("autobahn test cases", function()
+describe("autobahn test cases #conformance", function()
   it("run", function()
     cosock.spawn(function()
       banner_print("Getting number of cases")
