@@ -24,7 +24,10 @@ jobs:
         run: luarocks install dkjson
       - name: luarocks make
         run: luarocks make
-      - name: run tests
+      - name: run unit tests
+        run: busted -c --exclude-pattern ./spec/client_integration_spec.lua
+        timeout-minutes: 5
+      - name: run conformance tests
         run: |
           docker run -it -p 9001:9001 \
           -v "$PWD/spec/config:/config" \
@@ -32,8 +35,7 @@ jobs:
           -d crossbario/autobahn-testsuite \
           wstest -d -m fuzzingserver -s /config/fuzzingserver.json \
           && sleep 3 \
-          && busted ./spec/client_integration_spec.lua
-          # && busted -c
+          && busted -c ./spec/client_integration_spec.lua
         timeout-minutes: 15
         env:
           LUALOG: debug
