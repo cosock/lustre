@@ -85,7 +85,6 @@ local function banner_print(...)
 end
 
 local function echo_client(case)
-  should_print = case == 63 or case == 64
   local sock, err = socket.tcp()
   if err then assert(false, err) end
   local config = Config.default()
@@ -121,6 +120,7 @@ local function update_reports()
   if err then assert(false, err) end
   local config = Config.default()
   local websocket = ws.client(sock, "/updateReports?agent=lua-lustre", config)
+  websocket.id = "update_reports"
   local tx, rx = cosock.channel.new()
   websocket:register_message_cb(
     function(msg)
@@ -141,6 +141,7 @@ local function get_num_test_cases()
   if err then assert(false, err) end
   local config = Config.default()
   local websocket = ws.client(sock, "/getCaseCount", config)
+  websocket.id = "get_num_test_cases"
   local tx, rx = cosock.channel.new()
   websocket:register_message_cb(function(msg)
     tx:send(tonumber(msg.data))
