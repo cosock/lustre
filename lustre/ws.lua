@@ -245,7 +245,7 @@ function WebSocket:receive_loop()
         end
         goto continue
       end
-      log.debug(self.id, string.format(cosock.socket.gettime(), "RECEIVED FRAME: \n%s\n\n", utils.table_string(frame, nil, true, 100)))
+      log.debug(self.id, cosock.socket.gettime(), string.format("RECEIVED FRAME: \n%s\n\n", utils.table_string(frame, nil, true, 100)))
       if frame:is_control() then
         if not frame:is_final() then
           log.trace(self.id, "PROTOCOL ERR: received non final control frame")
@@ -266,7 +266,7 @@ function WebSocket:receive_loop()
           if not sent_bytes and self.error_cb then
             self.error_cb("failed to send pong in response to ping: "..err)
           else
-            log.trace(self.id, string.format("SENT FRAME: \n%s\n\n", utils.table_string(fm, nil, true)))
+            log.trace(self.id, cosock.socket.gettime(), string.format("SENT FRAME: \n%s\n\n", utils.table_string(fm, nil, true)))
           end
         elseif control_type == "pong" then
           pending_pongs = 0 -- TODO this functionality is not tested by the test framework
