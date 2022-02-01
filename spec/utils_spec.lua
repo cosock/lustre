@@ -120,17 +120,17 @@ describe("utils", function()
                 local e = os.time()
                 assert(os.difftime(s, e) < 100, string.format("validating 4*2^20 bytes took >100 s %s", os.difftime(s, e)))
             end)
-            it("16 * 2^20 #large-payload", function()
-                local bytes = string.rep(
-                    string.rep("BAsd7&jh23", 2),
-                    2 ^ 20
-                )
-                bytes = string.sub(bytes, 1, 16 * 2 ^ 20)
-                local s = os.time()
-                assert(utils.validate_utf8(bytes))
-                local e = os.time()
-                assert(os.difftime(s, e) < 100, string.format("validating 16*2^20 bytes took >100 s %s", os.difftime(s, e)))
-            end)
+            -- it("16 * 2^20 #large-payload", function()
+            --     local bytes = string.rep(
+            --         string.rep("BAsd7&jh23", 2),
+            --         2 ^ 20
+            --     )
+            --     bytes = string.sub(bytes, 1, 16 * 2 ^ 20)
+            --     local s = os.time()
+            --     assert(utils.validate_utf8(bytes))
+            --     local e = os.time()
+            --     assert(os.difftime(s, e) < 100, string.format("validating 16*2^20 bytes took >100 s %s", os.difftime(s, e)))
+            -- end)
         end)
     end)
 end)

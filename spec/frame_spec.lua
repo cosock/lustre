@@ -25,20 +25,20 @@ describe("Frame", function()
       f:apply_mask()
       assert.are(f.payload, payload)
     end)
-    it("round tripping with mask will remain unchanged large payload #large-payload", function()
-      local header = FrameHeader:default():set_mask({1, 2, 3, 4})
-      local payload = string.rep(
-          string.rep("BAsd7&jh23", 2),
-          2 ^ 20
-      )
-      payload = string.sub(payload, 1, 16 * 2 ^ 20)
-      local f = Frame.from_parts(header, payload)
-      f:apply_mask()
-      utils.assert_fmt(f.payload ~= payload, "Expected payloads to not match\n%s\n%s", f.payload,
-                       payload)
-      f:apply_mask()
-      assert.are.same(f.payload, payload)
-    end)
+    -- it("round tripping with mask will remain unchanged large payload #large-payload", function()
+    --   local header = FrameHeader:default():set_mask({1, 2, 3, 4})
+    --   local payload = string.rep(
+    --       string.rep("BAsd7&jh23", 2),
+    --       2 ^ 20
+    --   )
+    --   payload = string.sub(payload, 1, 16 * 2 ^ 20)
+    --   local f = Frame.from_parts(header, payload)
+    --   f:apply_mask()
+    --   utils.assert_fmt(f.payload ~= payload, "Expected payloads to not match\n%s\n%s", f.payload,
+    --                    payload)
+    --   f:apply_mask()
+    --   assert.are.same(f.payload, payload)
+    -- end)
   end)
   it("full round trip matches #a", function()
     local bytes = string.char(0x80 | 2, 0x80 | 100, 42, 42, 42, 42) .. string.rep("a", 2048)
