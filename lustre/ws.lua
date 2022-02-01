@@ -114,7 +114,7 @@ end
 function WebSocket:send_bytes(bytes)
   local data_idx = 1
   local frames_sent = 0
-  if self._close_frame_sent then return nil, "currently closing connection" end
+  if self.state ~= "Active" then return nil, "currently closing connection" end
   repeat
     local header = FrameHeader.default()
     local payload = ""
@@ -245,7 +245,7 @@ function WebSocket:receive_loop()
         end
         goto continue
       end
-      log.debug(self.id, string.format("RECEIVED FRAME: \n%s\n\n", utils.table_string(frame, nil, true, 100)))
+      log.debug(self.id, string.format(cosock.socket.gettime(), "RECEIVED FRAME: \n%s\n\n", utils.table_string(frame, nil, true, 100)))
       if frame:is_control() then
         if not frame:is_final() then
           log.trace(self.id, "PROTOCOL ERR: received non final control frame")
