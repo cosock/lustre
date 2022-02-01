@@ -54,6 +54,7 @@ local function collect_failures(err_msgs)
   local reports = collect_all_reports()
   local results = assert(reports.index["lua-lustre"], "Invalid object shape, expected `lua-lustre`")
   local not_ok = {}
+  print("collecting failed results")
   for k, v in pairs(results) do
     if v.behavior == "FAILED" then
       not_ok[k] = {
@@ -64,6 +65,7 @@ local function collect_failures(err_msgs)
       }
     end
   end
+  print("collecting error messages")
   for idx, msg in pairs(err_msgs) do
     local report = assert(reports[idx], "invalid report index" .. tostring(idx))
     if not_ok[report.id] then
@@ -72,6 +74,7 @@ local function collect_failures(err_msgs)
       not_ok[report.id] = msg
     end
   end
+  print("collection complete")
   return not_ok
 end
 
