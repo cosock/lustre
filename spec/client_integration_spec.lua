@@ -67,7 +67,10 @@ local function collect_failures(err_msgs)
   end
   print("collecting error messages")
   for idx, msg in pairs(err_msgs) do
-    local report = assert(reports[idx], "invalid report index" .. tostring(idx))
+    if not reports[idx] then
+      print((require "utils").table_string(reports, "reports", true))
+    end
+    local report = assert(reports[idx], "invalid report index " .. tostring(idx))
     if not_ok[report.id] then
       not_ok[report.id] = { not_ok[report.id], msg }
     else
