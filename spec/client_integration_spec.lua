@@ -69,7 +69,10 @@ local function collect_failures(err_msgs)
   for idx, msg in pairs(err_msgs) do
     if not reports[tostring(idx)] then
       print("invalid report index " .. tostring(idx))
-      print((require "lustre.utils").table_string(reports, "reports", true))
+      for k, _ in pairs(reports) do
+        print(k)
+      end
+      -- print((require "lustre.utils").table_string(reports, "reports", true))
     end
     local report = assert(reports[tostring(idx)], "invalid report index " .. tostring(idx))
     if not_ok[report.id] then
