@@ -42,7 +42,7 @@ local function collect_all_reports()
       if string.match(path, "^index%.json$") then
         reports.index = t
       else
-        reports[t.case] = t
+        reports[tostring(t.case)] = t
         reports[t.id] = t
       end
     end
@@ -67,11 +67,11 @@ local function collect_failures(err_msgs)
   end
   print("collecting error messages")
   for idx, msg in pairs(err_msgs) do
-    if not reports[idx] then
+    if not reports[tostring(idx)] then
       print("invalid report index " .. tostring(idx))
       print((require "lustre.utils").table_string(reports, "reports", true))
     end
-    local report = assert(reports[idx], "invalid report index " .. tostring(idx))
+    local report = assert(reports[tostring(idx)], "invalid report index " .. tostring(idx))
     if not_ok[report.id] then
       not_ok[report.id] = { not_ok[report.id], msg }
     else
