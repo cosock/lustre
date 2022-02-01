@@ -27,6 +27,7 @@ jobs:
       - name: run unit tests
         run: busted -c --exclude-tags conformance -o TAP
         timeout-minutes: 5
+        
       - name: run conformance tests
         run: |
           docker run -it -p 9001:9001 \
