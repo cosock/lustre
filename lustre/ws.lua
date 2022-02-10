@@ -23,8 +23,10 @@ local utils = require "lustre.utils"
 ---@field public handshake_key string key used in the websocket handshake
 ---@field public config Config
 ---@field private handshake Handshake
----@field private _tx table
----@field private _rx table
+---@field private _send_tx table
+---@field private _send_rx table
+---@field private _recv_tx table
+---@field private _recv_rx table
 ---@field private is_client boolean
 local WebSocket = {}
 WebSocket.__index = WebSocket
@@ -35,23 +37,32 @@ WebSocket.__index = WebSocket
 ---@param config Config 
 ---@return WebSocket
 ---@return string|nil
-function WebSocket.client(socket, url, config, ...)
-  local args = {...}
-  local _tx, _rx = cosock.channel.new()
+function WebSocket.client(socket, url, config)
+  local _send_tx, _send_rx = cosock.channel.new()
+  local _recv_tx, _recv_rx = cosock.channel.new()
   local ret = setmetatable({
     is_client = true,
     socket = socket,
     url = url or "/",
     handshake = Handshake.client(),
     config = config or Config.default(),
-    _tx = _tx,
-    _rx = _rx,
+    _send_tx = _send_tx,
+    _send_rx = _send_rx,
+    _recv_tx = _recv_tx,
+    _recv_rx = _recv_rx,
     id = math.random(),
     state = "Active",
   }, WebSocket)
-  ret:register_message_cb(args[1])
-  ret:register_error_cb(args[2])
-  ret:register_close_cb(args[3])
+  ret:register_message_cb(function(msg)
+    _recv_tx:send({ msg = msg })
+  end)
+  ret:register_error_cb(function(err)
+    _recv_tx:send({ err = err })
+  end)
+  ret:register_close_cb(function(msg)
+    log.debug("closing", msg)
+    _recv_tx:send({ err = "closed" })
+  end)
   return ret
 end
 
@@ -77,12 +88,22 @@ function WebSocket:register_close_cb(cb)
   return self
 end
 
+function WebSocket:receive()
+  local result = self._recv_rx:receive()
+  if result.err then
+    return nil, result.err
+  end
+  return result.msg
+end
+
 ---@param text string
 ---@return number, string|nil
 function WebSocket:send_text(text)
   local data_idx = 1
   local frames_sent = 0
-  if self.state ~= "Active" then return nil, "currently closing connection" end
+  if self.state ~= "Active" then
+    return nil, "closed"
+  end
   local valid_utf8, utf8_err = utils.validate_utf8(text)
   if not valid_utf8 then
     return nil, utf8_err
@@ -100,7 +121,7 @@ function WebSocket:send_text(text)
     header:set_length(#payload)
     local frame = Frame.from_parts(header, payload)
     frame:set_mask() -- todo handle client vs server
-    local suc, err = self._tx:send(frame)
+    local suc, err = self._send_tx:send(frame)
     if err then return nil, "channel error:" .. err end
     data_idx = data_idx + frame:payload_len()
     frames_sent = frames_sent + 1
@@ -128,7 +149,7 @@ function WebSocket:send_bytes(bytes)
     header:set_length(#payload)
     local frame = Frame.from_parts(header, payload)
     frame:set_mask() -- todo handle client vs server
-    local suc, err = self._tx:send(frame)
+    local suc, err = self._send_tx:send(frame)
     if err then return nil, "channel error:" .. err end
     data_idx = data_idx + frame:payload_len()
     frames_sent = frames_sent + 1
@@ -172,10 +193,9 @@ function WebSocket:accept() end
 ---@return string|nil
 function WebSocket:close(close_code, reason)
   log.debug('sending close message', close_code, reason)
-  log.debug(debug.traceback())
   if self.state == "Active" then
     local close_frame = Frame.close(close_code, reason):set_mask() -- TODO client vs server
-    local suc, err = self._tx:send(close_frame)
+    local suc, err = self._send_tx:send(close_frame)
     if not suc then return nil, "channel error:" .. err end
   elseif self.state == "ClosedBySelf" then
     self.state = "CloseAcknowledged"
@@ -199,24 +219,25 @@ function WebSocket:receive_loop()
   }
   while true do
     log.trace(self.id, "loop top")
-    local recv, _, err = socket.select({self.socket, self._rx}, nil, self.config._keep_alive)
+    local recv, _, err = socket.select({self.socket, self._send_rx}, nil, self.config._keep_alive)
     log.debug(recv and "recv" or "~recv", err or "")
     if not recv then
       if self:_handle_select_err(loop_state, err) then
         return
       end
     end
-    if recv[1] == self.socket then
-      if self:_handle_recv_ready(loop_state) then
-        return
-      end
-    elseif recv[1] == self._rx then -- frames we need to send on the socket
-      if self:_handle_send_ready() then
-        return
-      end
-    end
+    
+    if self:_handle_recvs(loop_state, recv, 1) then return end
+    if self:_handle_recvs(loop_state, recv, 2) then return end
+  end
+end
 
-    ::continue::
+function WebSocket:_handle_recvs(state, recv, idx)
+  if recv[idx] == self.socket then
+    return self:_handle_recv_ready(state)
+  end
+  if recv[idx] == self._send_rx then -- frames we need to send on the socket
+    return self:_handle_send_ready()
   end
 end
 
@@ -378,7 +399,7 @@ end
 
 function WebSocket:_handle_send_ready()
   log.debug(self.id, "selected channel")
-  local frame, err = self._rx:receive()
+  local frame, err = self._send_rx:receive()
   log.debug("received from rx")
   if not frame then
     if self.error_cb then self.error_cb("channel receive failure: " .. err) end

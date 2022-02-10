@@ -90,29 +90,28 @@ local function echo_client(case)
   local config = Config.default()
   local websocket = ws.client(sock, "/runCase?case=" .. case .. "&agent=lua-lustre", config)
   websocket.id = case
-  local closed = false
-  local tx, rx = cosock.channel.new()
-  local s, err
-  websocket:register_message_cb(function(msg)
+  local s, msg, err
+  assert(websocket:connect(HOST, PORT))
+  while true do
+    msg, err = websocket:receive()
+    if not msg then
+      if err == "closed" then
+        return 1
+      end
+      return nil, err
+    end
     if msg.type == Message.TEXT then
       s, err = websocket:send_text(msg.data)
     else
       s, err = websocket:send_bytes(msg.data)
     end
     if not s then
-      tx:send({ err = string.format("%s ECHOERROR: %s", case, err)})
+      if err == "closed" then
+        return 1
+      end
+      return nil, err
     end
-  end):register_error_cb(function(err)
-    print(case, "ERROR: ", err)
-    tx:send({err = string.format("%s ERROR: %s", case, err)})
-  end):register_close_cb(function(arg)
-    assert(not closed, 'ERROR: duplicate close in '..tostring(case)..tostring(arg))
-    closed = true
-    tx:send({ok = 1})
-  end)
-  assert(websocket:connect(HOST, PORT))
-  local res = rx:receive()
-  return res.ok, res.err
+  end
 end
 
 local function update_reports()
@@ -121,19 +120,17 @@ local function update_reports()
   local config = Config.default()
   local websocket = ws.client(sock, "/updateReports?agent=lua-lustre", config)
   websocket.id = "update_reports"
-  local tx, rx = cosock.channel.new()
-  websocket:register_message_cb(
-    function(msg)
-      tx:send(nil, string.format("ERR shouldn't have received msg: %s", msg.data))
-    end)
-  websocket:register_error_cb(function (msg)
-    tx:send(nil, msg)
-  end)
-  websocket:register_close_cb(function()
-    tx:send(1)
-  end)
   assert(websocket:connect(HOST, PORT))
-  return rx:receive()
+  while true do
+    local msg, err = websocket:receive()
+    if not msg then
+      if err == "closed" then
+        return 1
+      end
+      return nil, err
+    end
+    print('received message from updateReports', msg)
+  end
 end
 
 local function get_num_test_cases()
@@ -142,15 +139,10 @@ local function get_num_test_cases()
   local config = Config.default()
   local websocket = ws.client(sock, "/getCaseCount", config)
   websocket.id = "get_num_test_cases"
-  local tx, rx = cosock.channel.new()
-  websocket:register_message_cb(function(msg)
-    tx:send(tonumber(msg.data))
-  end)
-  websocket:register_error_cb(function (msg)
-    tx:send(nil, msg)
-  end)
-  assert(websocket:connect(HOST, PORT))
-  return rx:receive()
+  websocket:connect(HOST, PORT)
+  local res, err = websocket:receive()
+  print("num test cases result", res, err)
+  return tonumber(res.data), err
 end
 
 local function report_failures(failures)
