@@ -3,26 +3,28 @@ local OpCode = require "lustre.frame.opcode"
 local CloseCode = require "lustre.frame.close".CloseCode
 local CloseFrame = require "lustre.frame.close".CloseFrame
 local log = require "log"
+
+
+--- @class Frame
+---
+--- @field header FrameHeader
+--- @field payload string
 local Frame = {}
 Frame.__index = Frame
 
 Frame.MAX_CONTROL_FRAME_LENGTH = 125
 
 function Frame.from_stream(socket)
-  log.trace("Frame.from_stream")
   local header, err = FrameHeader.from_stream(socket)
-  log.debug("built frame header", header or err)
   if not header then return nil, err end
   local payload, err, partial
   if header.length > 0 then
-    log.debug("message length:", header.length)
     -- TODO receive in chunks if header.length is too big
     payload, err, partial = socket:receive(header.length) -- num bytes
     if not payload then
       return nil, err -- TODO return partial frame
     end
   else
-    log.debug("No message body")
     payload = ""
   end
 
@@ -118,7 +120,6 @@ end
 ---note: this applies the mask in place
 function Frame:apply_mask()
   local cosock = require "cosock"
-  log.debug("Frame:apply_mask", cosock.socket.gettime())
   if not self.header.mask then return nil, "No mask to apply" end
   -- local unmasked = ""
   local i = 0
@@ -128,12 +129,10 @@ function Frame:apply_mask()
     i = i + 1
     return string.char(char)
   end)
-  log.debug("masked", cosock.socket.gettime())
   self._masked_payload = not self._masked_payload
 end
 
 function Frame:encode()
-  log.debug("Frame:encode")
   local ret = self.header:encode()
   if not self:payload_is_masked() then
     self:apply_mask()

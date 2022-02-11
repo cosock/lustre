@@ -140,38 +140,19 @@ local function decode_header(bytes)
   }
 end
 
-local function toBits(num, bits)
-  -- returns a table of bits, least significant first.
-  local t={} -- will contain the bits
-  bits = bits or 8
-  while num>0 do
-      rest=math.fmod(num,2)
-      t[#t+1]=rest
-      num=math.floor((num-rest)/2)
-  end
-  for i = #t+1, bits do -- fill empty bits with 0
-      t[i] = 0
-  end
-  return t
-end
-
 local function decode_header_stream(socket)
   local bytes, err = socket:receive(2)
   if not bytes then
     return nil, err
   end
   local first_byte, second_byte = string.byte(bytes, 1, 2)
-  log.debug(first_byte, table.concat(toBits(first_byte), ' '))
-  log.debug(second_byte, table.concat(toBits(second_byte), ' '))
   local fin = first_byte & 0x80 ~= 0
   local rsv1 = first_byte & 0x40 ~= 0
   local rsv2 = first_byte & 0x20 ~= 0
   local rsv3 = first_byte & 0x10 ~= 0
   local opcode = OpCode.decode(first_byte & 0x0f)
-  log.debug('opcode', opcode)
   local masked = (second_byte & 0x80) ~= 0
   local length, length_length = decode_len_stream(second_byte, socket)
-  log.debug("frame length", length, length_length, second_byte)
   local mask
   if masked then mask = decode_mask_stream(socket) end
   return {

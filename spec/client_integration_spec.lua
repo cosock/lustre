@@ -18,11 +18,11 @@ busted /path/to/lustre/spec/client_spec.lua
 local ws = require "lustre.ws"
 local cosock = require "cosock"
 local socket = cosock.socket
-local CloseCode = require"lustre.frame.close".CloseCode
 local Config = require "lustre.config"
 local Message = require "lustre.message"
 local dkjson = require "dkjson"
 local lfs = require "lfs"
+local log = require "log"
 
 local HOST = "127.0.0.1"
 local PORT = 9001
@@ -85,26 +85,33 @@ local function banner_print(...)
 end
 
 local function echo_client(case)
+  log.trace("echo_client", case)
   local sock, err = socket.tcp()
   if err then assert(false, err) end
   local config = Config.default()
   local websocket = ws.client(sock, "/runCase?case=" .. case .. "&agent=lua-lustre", config)
   websocket.id = case
   local s, msg, err
+  log.info(case, "connecting websocket")
   assert(websocket:connect(HOST, PORT))
+  log.info(case, "websocket connected")
   while true do
+    log.info(case, "receiving on websocket")
     msg, err = websocket:receive()
+    log.info(case, "websocket received", (msg and msg.type) or ("Error: " .. err))
     if not msg then
       if err == "closed" then
         return 1
       end
       return nil, err
     end
+    log.info(case, "sending on websocket")
     if msg.type == Message.TEXT then
       s, err = websocket:send_text(msg.data)
     else
       s, err = websocket:send_bytes(msg.data)
     end
+    log.info(case, "websocket sent", (s and "successfully") or ("unsuccessfully: " .. err))
     if not s then
       if err == "closed" then
         return 1
@@ -161,7 +168,7 @@ end
 describe("autobahn test cases #conformance", function()
   it("run", function()
     cosock.spawn(function()
-      banner_print("Getting number of cases")
+      
       local tx, rx = cosock.channel.new()
       rx:settimeout(3)
       local start = 1
@@ -169,8 +176,10 @@ describe("autobahn test cases #conformance", function()
       local maybe_test = os.getenv("LUSTRE_TEST_CASE")
       if type(maybe_test) == "string" then
         total_cases = tonumber(maybe_test)
+        banner_print("running test", maybe_test)
         start = total_cases
       else
+        banner_print("Getting number of cases")
         total_cases = assert(get_num_test_cases())
       end
       local err_msgs = {}
