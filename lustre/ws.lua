@@ -279,8 +279,8 @@ function WebSocket:_handle_recv_ready(state)
     if err == "invalid opcode" or err == "invalid rsv bit" then
       log.warn(self.id, "PROTOCOL ERR: received frame with " .. err)
       self._send_tx:send({frame = Frame.close(CloseCode.protocol())})
-    elseif err == "timeout" and self.error_cb then
-      -- TODO retry receiving the frame, give partially received frame to err_cb
+    elseif err == "timeout" then
+      -- TODO retry receiving the frame, give partially received frame
       self._recv_tx:send({err = err})
       if self._waker then self._waker() end
     elseif err == "closed" then
