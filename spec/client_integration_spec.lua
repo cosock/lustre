@@ -84,34 +84,45 @@ local function banner_print(...)
   print("*********************************************************")
 end
 
-local function echo_client(case)
-  log.trace("echo_client", case)
+local function generate_websocket(case)
+  log.trace("generate_websocket", case)
   local sock, err = socket.tcp()
   if err then assert(false, err) end
   local config = Config.default()
   local websocket = ws.client(sock, "/runCase?case=" .. case .. "&agent=lua-lustre", config)
   websocket.id = case
-  local s, msg, err
   log.info(case, "connecting websocket")
   assert(websocket:connect(HOST, PORT))
-  log.info(case, "websocket connected")
+  return websocket
+end
+
+local function echo_client(cases)
+  log.trace("echo_client", table.concat(cases, ', '))
+  local websockets = {}
+  for _, case in ipairs(cases) do
+    table.insert(websockets, generate_websocket(case))
+  end
+
+  local s, msg, err, rcvrs
   while true do
-    log.info(case, "receiving on websocket")
+    rcvrs = assert(cosock.socket.select(websockets))
+    local websocket = rcvrs[1]
+    log.info(websocket.id, "receiving on websocket")
     msg, err = websocket:receive()
-    log.info(case, "websocket received", (msg and msg.type) or ("Error: " .. err))
+    log.info(websocket.id, "websocket received", (msg and msg.type) or ("Error: " .. err))
     if not msg then
       if err == "closed" then
         return 1
       end
-      return nil, err
+      return nil, err, websocket.id
     end
-    log.info(case, "sending on websocket")
+    log.info(websocket.id, "sending on websocket")
     if msg.type == Message.TEXT then
       s, err = websocket:send_text(msg.data)
     else
       s, err = websocket:send_bytes(msg.data)
     end
-    log.info(case, "websocket sent", (s and "successfully") or ("unsuccessfully: " .. err))
+    log.info(websocket.id, "websocket sent", (s and "successfully") or ("unsuccessfully: " .. err))
     if not s then
       if err == "closed" then
         return 1
@@ -183,11 +194,19 @@ describe("autobahn test cases #conformance", function()
         total_cases = assert(get_num_test_cases())
       end
       local err_msgs = {}
-      for i = start, total_cases do
-        banner_print("case: ", i)
-        local result, err = echo_client(i)
+      -- run the first 2 cases to run concurrently to flex the `select` usage
+      if start == 1 then
+        start = start + 2
+        local result, err, err_id = echo_client({"1", "2"})
         if not result then
-          err_msgs[i] = (err_msgs[i] or "") .. "\t" ..err
+          err_msgs[err_id or 1] = (err_msgs[err_id or 1] or "") .. "\t" ..err
+        end
+      end
+      for i = start, total_cases, 2 do
+        banner_print("case: ", i)
+        local result, err, err_id = echo_client({tostring(i)})
+        if not result then
+          err_msgs[err_id] = (err_msgs[err_id] or "") .. "\t" ..err
         end
       end
       banner_print("Updating reports")

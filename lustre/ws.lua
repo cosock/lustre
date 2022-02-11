@@ -65,6 +65,7 @@ end
 ---@return string|nil
 function WebSocket:receive()
   log.trace("WebSocket:receive")
+  self._waker = nil
   local result = self._recv_rx:receive()
   if result.err then
     return nil, result.err
@@ -85,11 +86,10 @@ function WebSocket:send_text(text)
   return self:send(Message.new("text", text))
 end
 
----@param bytes string 
+---@param bytes string
 ---@return number
 ---@return number, string|nil
 function WebSocket:send_bytes(bytes)
-  
   return self:send(Message.new("binary", bytes))
 end
 
@@ -162,7 +162,9 @@ function WebSocket:connect(host, port)
   return 1
 end
 
-function WebSocket:accept() end
+function WebSocket:accept()
+  return nil, "Not yet implemented"
+end
 
 ---@param close_code CloseCode
 ---@param reason string
@@ -187,6 +189,16 @@ function WebSocket:close(close_code, reason)
   end
 
   return 1, log.debug("closed websocket")
+end
+
+function WebSocket:setwaker(kind, waker)
+  assert(kind == "recvr", "unsupported wake kind: "..tostring(kind))
+  assert(self._waker == nil or waker == nil,
+  "waker already set, receive can't be waited on from multiple places at once")
+  self._waker = waker
+
+  -- if messages waiting, immediately wake
+  if #self._recv_tx.link.queue > 0 and waker then waker() end
 end
 
 ---@return Message
@@ -270,15 +282,18 @@ function WebSocket:_handle_recv_ready(state)
     elseif err == "timeout" and self.error_cb then
       -- TODO retry receiving the frame, give partially received frame to err_cb
       self._recv_tx:send({err = err})
+      if self._waker then self._waker() end
     elseif err == "closed" then
       log.debug("socket was closed", self.state)
       if self.state == "Active" or self.state == "ClosedBySelf" then
         self._recv_tx:send({err = err})
+        if self._waker then self._waker() end
         self.state = "Terminated"
       end
       return 1
     else
       self._recv_tx:send({err = err})
+      if self._waker then self._waker() end
     end
     return
   end
@@ -380,6 +395,7 @@ function WebSocket:_handle_recv_ready(state)
     end
   end
   self._recv_tx:send({msg = Message.new(state.msg_type, full_payload)})
+  if self._waker then self._waker() end
 end
 
 function WebSocket:_handle_send_ready()
@@ -423,6 +439,7 @@ function WebSocket:_handle_send_ready()
       self.socket:close()
       log.trace(self.id, "completed server close handshake")
       self._recv_tx:send({err = "closed"})
+      if self._waker then self._waker() end
       return 1
     end
   end
