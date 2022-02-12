@@ -207,15 +207,16 @@ function WebSocket:receive_loop()
   log.trace(self.id, "starting receive loop")
   local msg_type
   local loop_state = {
-    partial_frames = {},
+    partial_frames = nil,
     received_bytes = 0,
     frames_since_last_ping = 0,
     pending_pongs = 0,
     multiframe_message = false,
+    utf8_check_backward_idx = 0,
     msg_type,
   }
   local order = false
-  while true do
+  while self.state ~= "CloseAcknowledged" and self.state ~= "Terminated" do
     log.trace(self.id, "loop top")
     local rs = (order and {self._send_rx, self.socket}) or {self.socket, self._send_rx}
     order = not order
@@ -299,36 +300,7 @@ function WebSocket:_handle_recv_ready(state)
   end
   log.debug(self.id, string.format("RECEIVED FRAME %s %s", frame.header.opcode.type, frame.header.opcode.sub))
   if frame:is_control() then
-    if not frame:is_final() then
-      log.trace(self.id, "PROTOCOL ERR: received non final control frame")
-      self._send_tx:send({frame = Frame.close(CloseCode.protocol())})
-      return
-    end
-    local control_type = frame.header.opcode.sub
-    if frame:payload_len() > Frame.MAX_CONTROL_FRAME_LENGTH then
-      log.trace(self.id, "PROTOCOL ERR: received control frame that is too big")
-      self._send_tx:send({frame = Frame.close(CloseCode.protocol())})
-      return
-    end
-    if control_type == "ping" then
-      local fm = Frame.pong(frame.payload):set_mask()
-      local sent_bytes, err = send_utils.send_all(self.socket, fm:encode())
-      if not sent_bytes then
-        self._recv_rx:send({err = "failed to send pong in response to ping: "..err })
-      end
-      return
-    elseif control_type == "pong" then
-      state.pending_pongs = 0 -- TODO this functionality is not tested by the test framework
-      state.frames_since_last_ping = 0
-    elseif control_type == "close" then
-      self._send_tx:send({frame = Frame.close(CloseCode.decode(frame.payload))})
-      if self.state == "ClosedBySelf" then
-        self.state = "CloseAcknowledged"
-      elseif self.state == "Active" then
-        self.state = "ClosedByPeer"
-      end
-    end
-    return
+    return self:_handle_recv_control_frame(frame, state)
   end
 
   -- Should we close because we have been waiting to long for a ping?
@@ -340,27 +312,34 @@ function WebSocket:_handle_recv_ready(state)
       state.frames_since_last_ping = 0
       log.trace(self.id, "PROTOCOL ERR: received too many frames while waiting for pong")
       self._send_tx:send({frame = Frame.close(CloseCode.policy(), "no pong after ping")})
+      return
     end
   end
 
   -- handle fragmentation
-  if frame.header.opcode.sub == "text" then
-    state.msg_type = "text"
-    if state.multiframe_message then -- we expected a continuation message
+  if state.multiframe_message then
+    if frame.header.opcode.sub ~= "continue" then
+      log.warn("Expected continue frame found ", frame.header.opcode.sub)
       self._send_tx:send({frame = Frame.close(CloseCode.protocol(), "unexpected continue frame")})
       return
     end
-    if not frame:is_final() then state.multiframe_message = true end
-  elseif frame.header.opcode.sub == "binary" then
-    state.msg_type = "binary"
-    if state.multiframe_message then
-      self._send_tx:send({frame = Frame.close(CloseCode.protocol(), "unexpected continue frame")})
-      return
+    if state.msg_type == "text" then
+      if self:_handle_recv_text_frame(frame, state) then
+        return
+      end
     end
-    if not frame:is_final() then state.multiframe_message = true end
-  elseif frame.header.opcode.sub == "continue" and not state.multiframe_message then
+  elseif frame.header.opcode.sub == "continue" then
+    log.warn("Unexpected continue frame")
     self._send_tx:send({frame = Frame.close(CloseCode.protocol(), "unexpected continue frame")})
     return
+  else
+    if frame.header.opcode.sub == "text" then
+      if self:_handle_recv_text_frame(frame, state) then
+        return
+      end
+    end
+    state.msg_type = frame.header.opcode.sub
+    state.multiframe_message = not frame:is_final()
   end
   -- aggregate payloads
   if not frame:is_final() then
@@ -368,34 +347,96 @@ function WebSocket:_handle_recv_ready(state)
     -- TODO what should happen if we get message that is too big for the library?
     -- We are currently truncating the message.
     if state.received_bytes <= self.config.max_message_size then
-      table.insert(state.partial_frames, frame.payload)
+      state.partial_frames = (state.partial_frames or "") .. frame.payload
     else
       log.warn(self.id, "truncating message thats bigger than max config size")
     end
     return
   else
-    multiframe_message = false
+    state.multiframe_message = false
   end
 
   -- coalesce frame payloads into single message payload
   local full_payload = frame.payload
-  if next(state.partial_frames) then
-    table.insert(state.partial_frames, frame.payload)
-    full_payload = table.concat(state.partial_frames)
-    state.partial_frames = {}
+  if state.partial_frames then
+    full_payload = state.partial_frames .. frame.payload
+    state.partial_frames = nil
   end
   if state.msg_type == "text" then
     log.debug('checking for valid utf8')
     local valid_utf8, utf8_err = utils.validate_utf8(full_payload)
-    log.trace('valid?', valid_utf8, utf8_err)
+    log.trace('valid?', not not valid_utf8, utf8_err)
     if not valid_utf8 then
       log.warn("Received invalid utf8 text message, closing", utf8_err)
-      self._send_tx:send({frame = Frame.close(CloseCode.protocol(), utf8_err)})
+      send_utils.send_all(self.socket, Frame.close(CloseCode.protocol(), utf8_err):encode())
+      self.socket:close()
+      self.state = "Terminated"
+      self._recv_tx:send({err = "closed"})
+      if self._waker then self._waker() end
       return
     end
   end
   self._recv_tx:send({msg = Message.new(state.msg_type, full_payload)})
   if self._waker then self._waker() end
+end
+
+---
+---@param frame Frame
+---@param state table
+function WebSocket:_handle_recv_text_frame(frame, state)
+  log.debug('checking for valid utf8')
+  local valid_utf8, utf8_err, err_idx = utils.validate_utf8(
+    (state.partial_utf8_bytes or "") ..
+    frame.payload
+  )
+  log.trace('valid?', not not valid_utf8, utf8_err, err_idx)
+  if not valid_utf8 then
+    if utf8_err == "Invalid UTF-8 too short" then
+      state.partial_utf8_bytes = ((state.partial_frames or "") .. frame.payload):sub(err_idx)
+      log.debug("utf8 too short updated partial_utf8_bytes", state.partial_utf8_bytes)
+      if not frame:is_final() then
+        return
+      end
+    else
+      state.partial_utf8_bytes = ""
+    end
+
+    log.warn("Received invalid utf8 text frame, closing", utf8_err)
+    self._send_tx:send({frame = Frame.close(CloseCode.protocol(), utf8_err)})
+    self._recv_tx:send({err = "closed"})
+    self.state = "Terminated"
+    self.socket:close()
+    return
+  else
+    state.partial_utf8_bytes = ""
+  end
+end
+
+function WebSocket:_handle_recv_control_frame(frame, state)
+  if not frame:is_final() then
+    log.trace(self.id, "PROTOCOL ERR: received non final control frame")
+    self._send_tx:send({frame = Frame.close(CloseCode.protocol())})
+    return
+  end
+  local control_type = frame.header.opcode.sub
+  if frame:payload_len() > Frame.MAX_CONTROL_FRAME_LENGTH then
+    log.trace(self.id, "PROTOCOL ERR: received control frame that is too big")
+    self._send_tx:send({frame = Frame.close(CloseCode.protocol())})
+    return
+  end
+  if control_type == "ping" then
+    local fm = Frame.pong(frame.payload):set_mask()
+    local sent_bytes, err = send_utils.send_all(self.socket, fm:encode())
+    if not sent_bytes then
+      self._recv_tx:send({err = "failed to send pong in response to ping: "..err })
+    end
+    return
+  elseif control_type == "pong" then
+    state.pending_pongs = math.max(state.pending_pongs - 1, 0) -- TODO this functionality is not tested by the test framework
+    state.frames_since_last_ping = 0
+  elseif control_type == "close" then
+    self._send_tx:send({frame = Frame.close(CloseCode.decode(frame.payload))})
+  end
 end
 
 function WebSocket:_handle_send_ready()
@@ -428,23 +469,35 @@ function WebSocket:_handle_send_ready()
   local ret
 
   if frame:is_close() then
-    log.debug("sending close frame", self.state)
-    if self.state == "Active" then
-      self.state = "ClosedBySelf"
-    elseif self.state == "ClosedByPeer" then
-      self.state = "CloseAcknowledged"
-    end
-    if self.state == "CloseAcknowledged" then
-      log.debug("Closing socket")
-      self.socket:close()
-      log.trace(self.id, "completed server close handshake")
-      self._recv_tx:send({err = "closed"})
-      if self._waker then self._waker() end
-      return 1
-    end
+    return self:_handle_sent_close_frame()
   end
   if reply then
     reply:send({ok = 1})
+  end
+end
+
+function WebSocket:_handle_sent_close_frame()
+  if self.state == "Active" then
+    self.state = "ClosedBySelf"
+  end
+  if self.state == "ClosedByPeer" then
+    self.state = "CloseAcknowledged"
+    self.socket:close()
+    if self._waker then self._waker() end
+    return 1
+  end
+end
+
+function WebSocket:_handle_recvd_close_frame()
+  if self.state == "Active" then
+    self.state = "ClosedByPeer"
+  end
+  if self.state == "ClosedBySelf" then
+    self.state = "CloseAcknowledged"
+    self.socket:close()
+    self._recv_tx:send({err = "closed"})
+    if self._waker then self._waker() end
+    return 1
   end
 end
 

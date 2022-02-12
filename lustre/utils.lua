@@ -280,7 +280,7 @@ local UTF8_CHAR_WIDTH = {
       4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -- F
 }
 
-function get_print_safe_string(str, limit)
+local function get_print_safe_string(str, limit)
   local ret
   if str:match("^[%g ]+$") ~= nil then
     if limit and #str > limit then
@@ -381,26 +381,6 @@ local function table_string(val, name, multi_line, str_limit)
   return stringify_table_helper(val, name, multi_line, 0, {}, str_limit)
 end
 
-local function has_continue_bits(ch)
-  return ch & 0x80 == 0x80
-end
-
-local function to_bits(ch)
-  local bits = {}
-  while ch > 0 do
-    if (ch & 1) > 0 then
-      table.insert(bits, '1')
-    else
-      table.insert(bits, '0')
-    end
-    ch = ch >> 1
-  end
-  while #bits < 8 do
-    table.insert(bits, '0')
-  end
-  return string.reverse(table.concat(bits, ' '))
-end
-
 local function trailer_is_in_range(byte)
   local as_i8 = U8_AS_I8[byte]
   if not as_i8 then
@@ -477,7 +457,8 @@ local function check_for_range(len, one, two, three, four)
   log.trace("check_for_range", len, one, two, three, four)
   if len == 4 then
     if not (two and three and four) then
-      return nil, "Invalid UTF-8 too short"
+      local count = (four and 1 or 0) + (three and 1 or 0) + (two and 1 or 0) + 1
+      return nil, "Invalid UTF-8 too short", -count
     end
     log.trace("four byte check")
     return valid_4_byte_set(one, two, three, four)
@@ -485,14 +466,15 @@ local function check_for_range(len, one, two, three, four)
   if len == 3 then
     log.trace("three byte check")
     if not (two and three) then
-      return nil, "Invalid UTF-8 too short"
+      local count = (three and 1 or 0) + (two and 1 or 0) + 1
+      return nil, "Invalid UTF-8 too short", -count
     end
     return valid_3_byte_set(one, two, three)
   end
   if len == 2 then
     log.trace("two byte check")
     if not two then
-      return nil, "Invalid UTF-8 too short"
+      return nil, "Invalid UTF-8 too short",  -1
     end  
     if trailer_is_in_range(two) then
       return true
@@ -535,73 +517,11 @@ local function validate_utf8(s)
       return nil, "Invalid UTF-8 Length"
     end
     log.trace("checking for range", first, width)
-    local suc, e = check_for_range(width, string.byte(s, i, i+width-1))
+    local suc, e, idx = check_for_range(width, string.byte(s, i, i+width-1))
     if not suc then
-      return nil, e
+      return nil, e, idx
     end
     i = i + width
-  --   if width == 2 then
-  --     check_for_range(2, {first, s:byte(2, 2)})
-  --   end
-  --   local bytes = table.pack(s:byte(i, i+width))
-  --   log.trace(i, "checking: ", to_bits(bytes[1]))
-  --   if bytes[1] & 0xF0 == 0xF0 then
-  --     log.trace('found 4 byte character')
-  --     if #bytes < 4 then
-  --       return nil, 'UTF-8 Sequence Too Short'
-  --     end
-  --     if not (has_continue_bits(bytes[2])
-  --        and has_continue_bits(bytes[3])
-  --        and has_continue_bits(bytes[4])) then
-  --       return nil, 'Invalid UTF-8 Sequence Continue'
-  --     end
-  --     local value = ((bytes[1] ~ 0xF0) << (8*4))
-  --       | (bytes[2] ~ 0x80)
-  --     if not check_for_range(4, bytes) then
-  --       return nil, "Codepoint out of range"
-  --     end
-  --     i = i + 4
-  --   elseif bytes[1] & 224 == 224 then
-  --     log.trace("found 3 byte character")
-  --     if #bytes < 3 then
-  --       return nil, 'UTF-8 Sequence Too Short'
-  --     end
-  --     if not (has_continue_bits(bytes[2])
-  --        and has_continue_bits(bytes[3])) then
-  --       return nil, 'Invalid UTF-8 Sequence Continue'
-  --     end
-  --     if not check_for_range(3, bytes) then
-  --       return nil, "Codepoint out of range"
-  --     end
-  --     i = i + 3
-  --   elseif bytes[1] & 0xC0 == 0xC0 then
-  --     log.trace("found 2 byte character")
-  --     if #bytes < 2 then
-  --       return nil, 'UTF-8 Sequence Too Short'
-  --     end
-  --     log.trace("not too short")
-  --     if not has_continue_bits(bytes[2]) then
-  --       return nil, 'Invalid UTF-8 Sequence Continue'
-  --     end
-  --     log.trace("has continue bit")
-  --     -- log.debug("?", string.format("%s", check_for_range(2, bytes)), string.format("%X %X"), bytes[1], bytes[2])
-  --     assert(check_for_range(2, bytes))
-  --     if not check_for_range(2, bytes) then
-  --       return nil, "Codepoint out of range"
-  --     end
-  --     log.debug("is in range")
-  --     i = i + 2
-  --   else
-  --     log.trace("found potential 1 byte character")
-  --     if bytes[1] & 0x80 ~= 0 then
-  --       log.trace("1 byte character can't have 128 set")
-  --       return nil, 'Invalid UTF-8 Sequence Start'
-  --     end
-  --     if not check_for_range(1, bytes) then
-  --       return nil, "Codepoint out of range"
-  --     end
-  --     i = i + 1
-  --   end
   end
   return 1
 end

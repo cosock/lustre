@@ -30,13 +30,14 @@ jobs:
 
       - name: run conformance tests
         run: |
-          docker run -it -p 9001:9001 \
+          rm -rf $PWD/spec/reports/clients \
+          && docker run -it -p 9001:9001 \
           -v "$PWD/spec/config:/config" \
           -v "$PWD/spec/reports:/reports" \
           -d crossbario/autobahn-testsuite \
           wstest -d -m fuzzingserver -s /config/fuzzingserver.json \
           && sleep 3 \
-          && busted -c -t conformance --exclude-tags large-payload  -o TAP
+          && busted -t conformance --exclude-tags large-payload  -o TAP
         timeout-minutes: 15
         # env:
         #   LUALOG: debug

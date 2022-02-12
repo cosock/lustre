@@ -22,11 +22,14 @@ build = {
    modules = {
       ["lustre"] = "lustre/init.lua",
       ["lustre.config"] = "lustre/config.lua",
+      ["lustre.message"] = "lustre/message.lua",
+      ["lustre.utils"] = "lustre/utils.lua",
       ["lustre.frame"] = "lustre/frame/init.lua",
       ["lustre.frame.frame_header"] = "lustre/frame/frame_header.lua",
       ["lustre.frame.opcode"] = "lustre/frame/opcode.lua",
       ["lustre.frame.close"] = "lustre/frame/close.lua",
       ["lustre.handshake"] = "lustre/handshake/init.lua",
       ["lustre.handshake.key"] = "lustre/handshake/key.lua",
+
    }
 }

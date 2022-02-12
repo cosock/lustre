@@ -62,6 +62,7 @@ local function collect_failures(err_msgs)
         result = reports[k].result,
         expected = reports[k].expected,
         received = reports[k].received,
+        case = reports[k].case,
       }
     end
   end
@@ -96,8 +97,38 @@ local function generate_websocket(case)
   return websocket
 end
 
-local function echo_client(cases)
+local function echo_client(websocket)
+  while true do
+    log.info(websocket.id, "receiving on websocket")
+    msg, err = websocket:receive()
+    log.info(websocket.id, "websocket received", (msg and msg.type) or ("Error: " .. err))
+    if not msg then
+      if err == "closed" then
+        return 1
+      end
+      return nil, err, websocket.id
+    end
+    log.info(websocket.id, "sending on websocket")
+    if msg.type == Message.TEXT then
+      s, err = websocket:send_text(msg.data)
+    else
+      s, err = websocket:send_bytes(msg.data)
+    end
+    log.info(websocket.id, "websocket sent", (s and "successfully") or ("unsuccessfully: " .. err))
+    if not s then
+      if err == "closed" then
+        return 1
+      end
+      return nil, err
+    end
+  end
+end
+
+local function echo_clients(cases)
   log.trace("echo_client", table.concat(cases, ', '))
+  if #cases == 1 then
+    return echo_client(generate_websocket(cases[1]))
+  end
   local websockets = {}
   for _, case in ipairs(cases) do
     table.insert(websockets, generate_websocket(case))
@@ -105,6 +136,7 @@ local function echo_client(cases)
 
   local s, msg, err, rcvrs
   while true do
+    assert(#websockets > 0)
     rcvrs = assert(cosock.socket.select(websockets))
     local websocket = rcvrs[1]
     log.info(websocket.id, "receiving on websocket")
@@ -164,14 +196,18 @@ local function get_num_test_cases()
 end
 
 local function report_failures(failures)
-  local lines = {"Test Failures:"}
+  local lines = {"Test Failures: "}
+  local ct = 0
   for id, failure in pairs(failures) do
+    ct = ct + 1
     local json = dkjson.encode(failure, { indent = true })
-    table.insert(lines, string.format("----%s----", id))
+    table.insert(lines, string.format("----%s(%s)----", id, failure.case or "???"))
     table.insert(lines, json)
-    table.insert(lines, string.format("----%s----", id))
+    table.insert(lines, string.format("----%s(%s)----", id, failure.case or "???"))
   end
+  print("reporting %s lines of failures", #lines)
   if #lines > 1 then
+    table.insert(lines, string.format("Failure count: %s", ct))
     error(table.concat(lines, '\n'))
   end
 end
@@ -197,16 +233,21 @@ describe("autobahn test cases #conformance", function()
       -- run the first 2 cases to run concurrently to flex the `select` usage
       if start == 1 then
         start = start + 2
-        local result, err, err_id = echo_client({"1", "2"})
+        local result, err, err_id = echo_clients({"1", "2"})
         if not result then
           err_msgs[err_id or 1] = (err_msgs[err_id or 1] or "") .. "\t" ..err
         end
       end
       for i = start, total_cases, 2 do
         banner_print("case: ", i)
-        local result, err, err_id = echo_client({tostring(i)})
+        local s = os.time()
+        local result, err, err_id = echo_clients({tostring(i)})
+        local e = os.time()
         if not result then
           err_msgs[err_id] = (err_msgs[err_id] or "") .. "\t" ..err
+        end
+        if os.difftime(e, s) > 1 then
+          log.warn("Test "  .. tostring(i) .. "too more than 1 sec" .. tostring(os.difftime(e, s)))
         end
       end
       banner_print("Updating reports")
