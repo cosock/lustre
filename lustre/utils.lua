@@ -1,4 +1,4 @@
-local log = require "log"
+local log = require"log"
 
 local U8_AS_I8 = {
   [0] = 0,
@@ -260,6 +260,7 @@ local U8_AS_I8 = {
 }
 
 -- https://tools.ietf.org/html/rfc3629
+-- LuaFormatter off
 local UTF8_CHAR_WIDTH = {
       -- 1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
 [0] = 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, -- 0
@@ -279,12 +280,14 @@ local UTF8_CHAR_WIDTH = {
       3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, -- E
       4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -- F
 }
+-- LuaFormatter on
 
 local function get_print_safe_string(str, limit)
   local ret
   if str:match("^[%g ]+$") ~= nil then
     if limit and #str > limit then
-      ret = string.format("%s", string.sub(str, 1, limit).."...")
+      ret = string.format("%s", string.sub(str, 1,
+        limit) .. "...")
     else
       ret = string.format("%s", str)
     end
@@ -297,7 +300,8 @@ local function get_print_safe_string(str, limit)
       fmt = string.rep("\\x%02X", #str)
       len = #str
     end
-    ret = string.format(fmt, string.byte(str, 1, len))
+    ret = string.format(fmt,
+      string.byte(str, 1, len))
   end
   return ret
 end
@@ -318,55 +322,82 @@ end
 
 local stringify_table_helper
 
-stringify_table_helper = function(val, name, multi_line, indent, previously_printed, str_limit)
-  local tabStr = multi_line and string.rep(" ", indent) or ""
+stringify_table_helper = function(val, name,
+  multi_line, indent, previously_printed,
+  str_limit)
+  local tabStr = multi_line
+                   and string.rep(" ", indent)
+                   or ""
 
-  if name then tabStr = tabStr .. tostring(name) .. "=" end
+  if name then
+    tabStr = tabStr .. tostring(name) .. "="
+  end
 
   local multi_line_str = ""
-  if multi_line then multi_line_str = "\n" end
+  if multi_line then
+    multi_line_str = "\n"
+  end
 
   if type(val) == "table" then
     if not previously_printed[val] then
       tabStr = tabStr .. "{" .. multi_line_str
       -- sort keys for repeatability of print
       local tkeys = {}
-      for k in pairs(val) do table.insert(tkeys, k) end
+      for k in pairs(val) do
+        table.insert(tkeys, k)
+      end
       table.sort(tkeys, key_order_cmp)
 
       for _, k in ipairs(tkeys) do
         local v = val[k]
         previously_printed[val] = name
         if #val > 0 and type(k) == "number" then
-          tabStr = tabStr ..
-                     stringify_table_helper(v, nil, multi_line, indent + 2, previously_printed, str_limit) ..
-                     ", " .. multi_line_str
+          tabStr = tabStr
+                     .. stringify_table_helper(v,
+              nil, multi_line, indent + 2,
+              previously_printed, str_limit)
+                     .. ", " .. multi_line_str
         else
-          tabStr = tabStr ..
-                     stringify_table_helper(v, k, multi_line, indent + 2, previously_printed, str_limit) ..
-                     ", " .. multi_line_str
+          tabStr = tabStr
+                     .. stringify_table_helper(v,
+              k, multi_line, indent + 2,
+              previously_printed, str_limit)
+                     .. ", " .. multi_line_str
         end
       end
-      if tabStr:sub(#tabStr, #tabStr) == "\n" and tabStr:sub(#tabStr - 1, #tabStr - 1) == "{" then
+      if tabStr:sub(#tabStr, #tabStr) == "\n"
+        and tabStr:sub(#tabStr - 1, #tabStr - 1)
+        == "{" then
         tabStr = tabStr:sub(1, -2) .. "}"
-      elseif tabStr:sub(#tabStr - 1, #tabStr - 1) == "," then
-        tabStr = tabStr:sub(1, -3) .. (multi_line and string.rep(" ", indent) or "") .. "}"
+      elseif tabStr:sub(#tabStr - 1, #tabStr - 1)
+        == "," then
+        tabStr = tabStr:sub(1, -3)
+                   .. (multi_line
+                     and string.rep(" ", indent)
+                     or "") .. "}"
       else
-        tabStr = tabStr .. (multi_line and string.rep(" ", indent) or "") .. "}"
+        tabStr = tabStr
+                   .. (multi_line
+                     and string.rep(" ", indent)
+                     or "") .. "}"
       end
     else
-      tabStr = tabStr .. "RecursiveTable: " .. previously_printed[val]
+      tabStr = tabStr .. "RecursiveTable: "
+                 .. previously_printed[val]
     end
   elseif type(val) == "number" then
     tabStr = tabStr .. tostring(val)
   elseif type(val) == "string" then
-    tabStr = tabStr .. "\"" .. get_print_safe_string(val, str_limit) .. "\""
+    tabStr = tabStr .. "\""
+               .. get_print_safe_string(val,
+        str_limit) .. "\""
   elseif type(val) == "boolean" then
     tabStr = tabStr .. (val and "true" or "false")
   elseif type(val) == "function" then
     tabStr = tabStr .. tostring(val)
   else
-    tabStr = tabStr .. "\"[unknown datatype:" .. type(val) .. "]\""
+    tabStr = tabStr .. "\"[unknown datatype:"
+               .. type(val) .. "]\""
   end
 
   return tabStr
@@ -377,8 +408,10 @@ end
 ---@param name string Print a name along with value [Optional]
 ---@param multi_line boolean use newlines to provide a more easily human readable string [Optional]
 ---@returns string String representation of `val`
-local function table_string(val, name, multi_line, str_limit)
-  return stringify_table_helper(val, name, multi_line, 0, {}, str_limit)
+local function table_string(val, name, multi_line,
+  str_limit)
+  return stringify_table_helper(val, name,
+    multi_line, 0, {}, str_limit)
 end
 
 local function trailer_is_in_range(byte)
@@ -386,79 +419,90 @@ local function trailer_is_in_range(byte)
   if not as_i8 then
     error("byte too large: ", byte)
   end
-  log.trace('trailer_is_in_range', byte, as_i8, as_i8 < -64)
+  log.trace("trailer_is_in_range", byte, as_i8,
+    as_i8 < -64)
   return as_i8 < -64
-  -- return byte >= 128 and byte < 192
 end
 
 local function valid_3_byte_set(one, two, three)
-    --0xE0, 0xA0..=0xBF)
-    if one == 0xE0 then
-      if two >= 0xA0 and two <= 0xBF and trailer_is_in_range(three) then
-        return true
-      end
-      return false, "Invalid UTF-8 Continue"
-    end
-    --| (0xE1..=0xEC, 0x80..=0xBF)
-    if one >= 0xE1 and one <= 0xEC then
-      if two >= 0x80 and two <= 0xBF and trailer_is_in_range(three) then
-        return true
-      end
-      return false, "Invalid UTF-8 Continue"
-    end
-    --| (0xED, 0x80..=0x9F)
-    if one == 0xED then
-      if two >= 0x80 and two <= 0x9F and trailer_is_in_range(three) then
-        return true
-      end
-      return false, "Invalid UTF-8 Continue"
-    end
-    --| (0xEE..=0xEF, 0x80..=0xBF) => {}
-    if one >= 0xEE and one <= 0xEF then
-      if two >= 0x80 and two <= 0xBF and trailer_is_in_range(three) then
-        return true
-      end
-      return false, "Invalid UTF-8 Continue"
-    end
-    if trailer_is_in_range(three) then
+  -- 0xE0, 0xA0..=0xBF)
+  if one == 0xE0 then
+    if two >= 0xA0 and two <= 0xBF
+      and trailer_is_in_range(three) then
       return true
     end
     return false, "Invalid UTF-8 Continue"
+  end
+  -- | (0xE1..=0xEC, 0x80..=0xBF)
+  if one >= 0xE1 and one <= 0xEC then
+    if two >= 0x80 and two <= 0xBF
+      and trailer_is_in_range(three) then
+      return true
+    end
+    return false, "Invalid UTF-8 Continue"
+  end
+  -- | (0xED, 0x80..=0x9F)
+  if one == 0xED then
+    if two >= 0x80 and two <= 0x9F
+      and trailer_is_in_range(three) then
+      return true
+    end
+    return false, "Invalid UTF-8 Continue"
+  end
+  -- | (0xEE..=0xEF, 0x80..=0xBF) => {}
+  if one >= 0xEE and one <= 0xEF then
+    if two >= 0x80 and two <= 0xBF
+      and trailer_is_in_range(three) then
+      return true
+    end
+    return false, "Invalid UTF-8 Continue"
+  end
+  if trailer_is_in_range(three) then
+    return true
+  end
+  return false, "Invalid UTF-8 Continue"
 end
 
-local function valid_4_byte_set(one, two, three, four)
-  --(0xF0, 0x90..=0xBF) 
+local function valid_4_byte_set(one, two, three,
+  four)
+  -- (0xF0, 0x90..=0xBF) 
   if one == 0xF0 then
-    return two >= 0x90 and two <= 0xBF and trailer_is_in_range(three) and trailer_is_in_range(four)
+    return two >= 0x90 and two <= 0xBF
+             and trailer_is_in_range(three)
+             and trailer_is_in_range(four)
   end
-  --| (0xF1..=0xF3, 0x80..=0xBF)
-  --| (0xF4, 0x80..=0x8F) 
+  -- | (0xF1..=0xF3, 0x80..=0xBF)
+  -- | (0xF4, 0x80..=0x8F)
   if one == 0xF4 then
-    log.trace('found 0xf4', string.format("%x", two))
-    if two >= 0x80
-    and two <= 0x8F
-    and trailer_is_in_range(three)
-    and trailer_is_in_range(four) then
+    log.trace("found 0xf4",
+      string.format("%x", two))
+    if two >= 0x80 and two <= 0x8F
+      and trailer_is_in_range(three)
+      and trailer_is_in_range(four) then
       return true
     end
   end
   if (one >= 0xF1 and one <= 0xF3) then
-    if two >= 0x80
-    and two <= 0xBF
-    and trailer_is_in_range(three)
-    and trailer_is_in_range(four) then
+    if two >= 0x80 and two <= 0xBF
+      and trailer_is_in_range(three)
+      and trailer_is_in_range(four) then
       return true
     end
   end
   return false, "Invalid UTF-8 Continue"
 end
 
-local function check_for_range(len, one, two, three, four)
-  log.trace("check_for_range", len, one, two, three, four)
+local function check_for_range(len, one, two,
+  three, four)
+  log.trace("check_for_range", len, one, two,
+    three, four)
   if len == 4 then
     if not (two and three and four) then
-      local count = (four and 1 or 0) + (three and 1 or 0) + (two and 1 or 0) + 1
-      return nil, "Invalid UTF-8 too short", -count
+      local count = (four and 1 or 0)
+                      + (three and 1 or 0)
+                      + (two and 1 or 0) + 1
+      return nil, "Invalid UTF-8 too short",
+        -count
     end
     log.trace("four byte check")
     return valid_4_byte_set(one, two, three, four)
@@ -466,16 +510,18 @@ local function check_for_range(len, one, two, three, four)
   if len == 3 then
     log.trace("three byte check")
     if not (two and three) then
-      local count = (three and 1 or 0) + (two and 1 or 0) + 1
-      return nil, "Invalid UTF-8 too short", -count
+      local count = (three and 1 or 0)
+                      + (two and 1 or 0) + 1
+      return nil, "Invalid UTF-8 too short",
+        -count
     end
     return valid_3_byte_set(one, two, three)
   end
   if len == 2 then
     log.trace("two byte check")
     if not two then
-      return nil, "Invalid UTF-8 too short",  -1
-    end  
+      return nil, "Invalid UTF-8 too short", -1
+    end
     if trailer_is_in_range(two) then
       return true
     end
@@ -494,11 +540,15 @@ end
 
 local function validate_utf8(s)
   if type(s) ~= "string" then
-    log.error("can't validate non string", debug.traceback())
-    return nil, "Type Error, expected string found "..type(s)
+    log.error("can't validate non string",
+      debug.traceback())
+    return nil,
+      "Type Error, expected string found "
+        .. type(s)
   end
   local i = 1
-  for _ in string.gmatch(s, "["..string.char(0xFF, 0xFE).."]") do
+  for _ in string.gmatch(s, "["
+    .. string.char(0xFF, 0xFE) .. "]") do
     return nil, "Invalid UTF-8 Byte"
   end
 
@@ -508,7 +558,7 @@ local function validate_utf8(s)
     if first < 128 then
       if first & 0x80 ~= 0 then
         -- log.trace("1 byte character can't have 128 set")
-        return nil, 'Invalid UTF-8 Sequence Start'
+        return nil, "Invalid UTF-8 Sequence Start"
       end
       return 1
     end
@@ -517,7 +567,8 @@ local function validate_utf8(s)
       return nil, "Invalid UTF-8 Length"
     end
     log.trace("checking for range", first, width)
-    local suc, e, idx = check_for_range(width, string.byte(s, i, i+width-1))
+    local suc, e, idx = check_for_range(width,
+      string.byte(s, i, i + width - 1))
     if not suc then
       return nil, e, idx
     end

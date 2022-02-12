@@ -9,6 +9,9 @@ Message.TEXT = "text"
 
 ---@param type string ['binary'|'text']
 ---@param data string
-function Message.new(type, data) return setmetatable({type = type, data = data}, Message) end
+function Message.new(type, data)
+  return setmetatable({type = type, data = data},
+    Message)
+end
 
 return Message

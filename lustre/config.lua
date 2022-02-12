@@ -40,7 +40,8 @@ end
 ---@param size number|nil
 ---@return Config
 function Config:max_message_size(size)
-  self._max_message_size = size or DEFAULT_MAX_MESSAGE
+  self._max_message_size =
+    size or DEFAULT_MAX_MESSAGE
   return self
 end
 
@@ -56,12 +57,14 @@ end
 ---@param size number|nil
 ---@return Config
 function Config:max_frames_without_pong(size)
-  self._max_frames_without_pong = size or DEFAULT_MAX_FRAMES_WITHOUT_PONG
+  self._max_frames_without_pong =
+    size or DEFAULT_MAX_FRAMES_WITHOUT_PONG
   return self
 end
 
 function Config:extension(name, params)
-  table.insert(self.extensions, {name = name, params = params})
+  table.insert(self.extensions,
+    {name = name, params = params})
   return self
 end
 
