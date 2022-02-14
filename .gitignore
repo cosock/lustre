@@ -8,3 +8,7 @@
 .vsls.json
 /spec/reports
 /utf8
+Dockerfile
+.dockerignore
+run_test.sh
+tmp

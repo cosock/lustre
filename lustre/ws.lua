@@ -59,7 +59,12 @@ function WebSocket.client(socket, url, config)
   return ret
 end
 
-function WebSocket.server(socket, config, ...)
+---Create a server side websocket (NOT YET IMPLEMENTED)
+---@param socket table the cosock.tcp socket to use
+---@param config Config The websocket configuration
+---@return WebSocket
+---@return string|nil @If an error occurs, returns the error message
+function WebSocket.server(socket, config)
   return nil, "Not yet implemented"
 end
 
@@ -179,7 +184,7 @@ function WebSocket:connect(host, port)
     return nil, "invalid handshake: " .. err
   end
   cosock.spawn(function()
-    self:receive_loop()
+    self:_receive_loop()
   end, "Client receive loop")
   return 1
 end
@@ -190,7 +195,7 @@ end
 
 ---@param close_code CloseCode
 ---@param reason string
----@return number 1 if succss
+---@return number 1 if success
 ---@return string|nil
 function WebSocket:close(close_code, reason)
   log.debug("sending close message",
@@ -216,6 +221,9 @@ function WebSocket:close(close_code, reason)
   return 1, log.debug("closed websocket")
 end
 
+---Cosock internal interface for using `cosock.socket.select`
+---@param kind string
+---@param waker fun()
 function WebSocket:setwaker(kind, waker)
   assert(kind == "recvr",
     "unsupported wake kind: " .. tostring(kind))
@@ -229,11 +237,10 @@ function WebSocket:setwaker(kind, waker)
   end
 end
 
----@return Message
+---Spawn the receive loop
 ---@return string|nil
-function WebSocket:receive_loop()
+function WebSocket:_receive_loop()
   log.trace(self.id, "starting receive loop")
-  local msg_type
   local loop_state = {
     partial_frames = nil,
     received_bytes = 0,
@@ -241,7 +248,7 @@ function WebSocket:receive_loop()
     pending_pongs = 0,
     multiframe_message = false,
     utf8_check_backward_idx = 0,
-    msg_type,
+    msg_type = nil,
   }
   local order = false
   while self.state ~= "CloseAcknowledged"

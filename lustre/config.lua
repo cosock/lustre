@@ -1,4 +1,6 @@
 ---@class Config
+---The configuration of a websocket provided at connection time
+---
 ---@field private _max_queue_size number|nil
 ---@field private _max_frame_size number
 ---@field private _max_message_size number
@@ -62,17 +64,28 @@ function Config:max_frames_without_pong(size)
   return self
 end
 
+---Add an entry to the enabled extensions
+---@param name string
+---@param params string[]
+---@return Config
 function Config:extension(name, params)
   table.insert(self.extensions,
     {name = name, params = params})
   return self
 end
 
+---Add an entry to the enabled protocols
+---@param name string
+---@return Config
 function Config:protocol(name)
   table.insert(self.protocols, name)
   return self
 end
 
+---Set the keep alive value in number of seconds. This will control
+---how often an idle websocket will send a "ping" frame
+---@param timeout any
+---@return Config
 function Config:keep_alive(timeout)
   self._keep_alive = timeout
   return self

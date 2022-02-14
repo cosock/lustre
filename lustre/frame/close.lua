@@ -1,8 +1,12 @@
 ---@class CloseCode
+---@field public value integer The numeric code for this close reason
+---@field public type string The human friendly close reason
 local CloseCode = {}
 CloseCode.__index = CloseCode
 
 ---@class CloseFrame
+---@field public code CloseCode The close reason
+---@field public reason string The frame's body which may provide more context to the close code
 local CloseFrame = {}
 CloseFrame.__index = CloseFrame
 

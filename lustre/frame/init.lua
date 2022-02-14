@@ -1,16 +1,13 @@
 local FrameHeader =
   require"lustre.frame.frame_header"
 local OpCode = require"lustre.frame.opcode"
-local CloseCode =
-  require"lustre.frame.close".CloseCode
 local CloseFrame =
   require"lustre.frame.close".CloseFrame
-local log = require"log"
 
---- @class Frame
+--- @class Frame A single websocket frame
 ---
---- @field header FrameHeader
---- @field payload string
+--- @field public header FrameHeader
+--- @field public payload string
 local Frame = {}
 Frame.__index = Frame
 

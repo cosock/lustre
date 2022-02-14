@@ -4,13 +4,18 @@ local Request = require"luncheon.request"
 local Response = require"luncheon.response"
 
 ---@class Handshake
----@field protocols string[] List of requested protocols
----@field extensions table[] List of requested extensions
----@field key string|nil Signing key
----@field accept string|nil Sec-WebSocket-Accept header value
+---@field public protocols string[] List of requested protocols
+---@field public extensions table[] List of requested extensions
+---@field public key string Signing key
+---@field public accept string Sec-WebSocket-Accept header value
 local Handshake = {}
 Handshake.__index = Handshake
 
+---Create an upgrade handshake for use with a websocket client
+---@param key string The signing key to use
+---@param protocols string[] The protocols to enable
+---@param extensions string[] The extensions to enable
+---@return Handshake
 function Handshake.client(key, protocols,
   extensions)
   return setmetatable({
@@ -19,6 +24,13 @@ function Handshake.client(key, protocols,
     key = key or Key.generate_key(),
   }, Handshake)
 end
+
+---Send the handshake http request
+---@param socket table The tcp socket to send on
+---@param url string The url's path to use
+---@param host string The host to provide in the "Host" header
+---@return number @1 if successful, nil if not
+---@return string|nil @nil if successful, an error message if not
 function Handshake:send(socket, url, host)
   local req = Request.new("GET", url, socket)
   req:add_header("Connection", "Upgrade")
@@ -49,9 +61,9 @@ end
 
 ---Validate the accept header returned by the
 ---the server
----@param res Response
+---@param res table the luncheon.Response
 ---@return boolean
----@return err
+---@return string|nil
 function Handshake:validate_accept(res)
   if not res then
     return false, "no response object"
@@ -108,8 +120,8 @@ end
 
 ---Validate the incoming request and fill in the outbound response with appropriate status/headers
 ---on success
----@param req Request
----@param res Response
+---@param req table the luncheo.Request to receive on
+---@param res table the luncheo.Response to send on
 ---@return Handshake|nil
 ---@return string
 function Handshake.server(req, res)

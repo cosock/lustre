@@ -159,7 +159,7 @@ local function echo_clients(cases)
       if err == "closed" then
         return 1
       end
-      return nil, err
+      return nil, err, websocket.id
     end
   end
 end
@@ -244,7 +244,7 @@ describe("autobahn test cases #conformance", function()
         local result, err, err_id = echo_clients({tostring(i)})
         local e = os.time()
         if not result then
-          err_msgs[err_id] = (err_msgs[err_id] or "") .. "\t" ..err
+          err_msgs[err_id or i] = (err_msgs[err_id or i] or "") .. "\t" ..err
         end
         if os.difftime(e, s) > 1 then
           log.warn("Test "  .. tostring(i) .. "too more than 1 sec" .. tostring(os.difftime(e, s)))

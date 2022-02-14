@@ -1,7 +1,7 @@
 ---@class OpCode
----@field public type string
----@field public sub string
----@field public value number|nil
+---@field public type string ["data"|"control"] The primary type of this frame
+---@field public sub string ["continue"|"text"|"binary"|"reserved"|"ping"|"pong"] The sub type of this frame
+---@field public value number|nil Only used for reserved frames
 local OpCode = {}
 OpCode.__index = OpCode
 OpCode.__tostring = function(self)
@@ -12,6 +12,10 @@ OpCode.__tostring = function(self)
   return self.type
 end
 
+---Decode a bytes into its Opcode
+---@param n integer The raw opcode from the incoming stream
+---@return OpCode
+---@return string|nil @if OpCode is nil, this will be the error message
 function OpCode.decode(n)
   local ret = {}
   if n == 0 then
@@ -75,30 +79,44 @@ function OpCode:encode()
   return nil, "Invalid opcode"
 end
 
+---Convenience Constructor for ping
+---@return OpCode
 function OpCode.ping()
   return OpCode.from("control", "ping")
 end
 
+---Convenience Constructor for pong
+---@return OpCode
 function OpCode.pong()
   return OpCode.from("control", "pong")
 end
 
+---Convenience Constructor for close
+---@return OpCode
 function OpCode.close()
   return OpCode.from("control", "close")
 end
 
+---Convenience Constructor for continue
+---@return OpCode
 function OpCode.continue()
   return OpCode.from("data", "continue")
 end
 
+---Convenience Constructor for text
+---@return OpCode
 function OpCode.text()
   return OpCode.from("data", "text")
 end
 
+---Convenience Constructor for binary
+---@return OpCode
 function OpCode.binary()
   return OpCode.from("data", "binary")
 end
 
+---Convenience Constructor to build from parts
+---@return OpCode
 function OpCode.from(ty, sub, value)
   return setmetatable({
     type = ty,
@@ -107,10 +125,15 @@ function OpCode.from(ty, sub, value)
   }, OpCode)
 end
 
+---Check if this opcode's sub typ is "continue"
+---@return boolean
 function OpCode:is_continue()
   return self.sub == "continue"
 end
 
+---Check if this opcode can be continued (self.sub needs to either be
+--- "text" or "binary")
+---@return boolean
 function OpCode:can_continue()
   return self.sub == "continue" or self.sub
            == "text" or self.sub == "binary"
