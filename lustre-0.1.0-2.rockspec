@@ -1,8 +1,8 @@
 package = "lustre"
-version = "0.1.0-1"
+version = "0.1.0-2"
 source = {
    url = "git://github.com/cosock/lustre",
-   tag = "v0.1.0-1"
+   tag = "v0.1.0-2"
 }
 description = {
    homepage = "https://github.com/cosock/lustre",
@@ -20,16 +20,16 @@ dependencies = {
 build = {
    type = "builtin",
    modules = {
-      ["lustre"] = "lustre/init.lua",
+      lustre = "lustre/init.lua",
       ["lustre.config"] = "lustre/config.lua",
-      ["lustre.message"] = "lustre/message.lua",
-      ["lustre.utils"] = "lustre/utils.lua",
       ["lustre.frame"] = "lustre/frame/init.lua",
+      ["lustre.frame.close"] = "lustre/frame/close.lua",
       ["lustre.frame.frame_header"] = "lustre/frame/frame_header.lua",
       ["lustre.frame.opcode"] = "lustre/frame/opcode.lua",
-      ["lustre.frame.close"] = "lustre/frame/close.lua",
       ["lustre.handshake"] = "lustre/handshake/init.lua",
       ["lustre.handshake.key"] = "lustre/handshake/key.lua",
-
+      ["lustre.message"] = "lustre/message.lua",
+      ["lustre.utils"] = "lustre/utils.lua",
+      ["lustre.ws"] = "lustre/ws.lua"
    }
 }
