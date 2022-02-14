@@ -8,6 +8,7 @@
 ---@field public extensions table[]
 ---@field public protocols string[]
 ---@field private _keep_alive number|nil
+---@field private _extra_headers table[]
 local Config = {}
 Config.__index = Config
 
@@ -27,6 +28,7 @@ function Config.default()
     extensions = {},
     protocols = {},
     _keep_alive = nil,
+    _extra_headers = {}
   }, Config)
 end
 
@@ -88,6 +90,11 @@ end
 ---@return Config
 function Config:keep_alive(timeout)
   self._keep_alive = timeout
+  return self
+end
+
+function Config:header(key, value)
+  self._extra_headers[key] = value
   return self
 end
 

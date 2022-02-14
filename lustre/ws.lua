@@ -42,13 +42,14 @@ WebSocket.__index = WebSocket
 function WebSocket.client(socket, url, config)
   local _send_tx, _send_rx = cosock.channel.new()
   local _recv_tx, _recv_rx = cosock.channel.new()
+  local config = config or Config.default()
   local ret = setmetatable(
     {
       is_client = true,
       socket = socket,
       url = url or "/",
-      handshake = Handshake.client(),
-      config = config or Config.default(),
+      handshake = Handshake.client(nil, config._protocols, config._extensions, config._extra_headers),
+      config = config,
       _send_tx = _send_tx,
       _send_rx = _send_rx,
       _recv_tx = _recv_tx,
