@@ -8,6 +8,7 @@ local Response = require"luncheon.response"
 ---@field public extensions table[] List of requested extensions
 ---@field public key string Signing key
 ---@field public accept string Sec-WebSocket-Accept header value
+---@field public extra_headers table[] Any extra request headers to provide
 local Handshake = {}
 Handshake.__index = Handshake
 
@@ -15,13 +16,15 @@ Handshake.__index = Handshake
 ---@param key string The signing key to use
 ---@param protocols string[] The protocols to enable
 ---@param extensions string[] The extensions to enable
+---@param extra_headers table[] Any extra headers to include
 ---@return Handshake
 function Handshake.client(key, protocols,
-  extensions)
+  extensions, extra_headers)
   return setmetatable({
     protocols = protocols or {},
     extensions = extensions or {},
     key = key or Key.generate_key(),
+    extra_headers = extra_headers or {}
   }, Handshake)
 end
 
@@ -43,6 +46,7 @@ function Handshake:send(socket, url, host)
     req:add_header("Sec-Websocket-Protocol",
       table.concat(self.protocols, ","))
   end
+
   local s, err = req:send()
   if not s then
     return "handshake request failure: " .. err
