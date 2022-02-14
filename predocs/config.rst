@@ -1,0 +1,5 @@
+===============
+Config
+===============
+
+.. lua:autoclass:: Config

@@ -1,0 +1,6 @@
+===============
+WebSocket
+===============
+
+.. lua:autoclass:: WebSocket
+

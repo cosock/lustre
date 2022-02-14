@@ -1,0 +1,6 @@
+===============
+Message
+===============
+
+.. lua:autoclass:: Message
+

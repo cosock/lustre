@@ -1,0 +1,366 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>Config &mdash; Lustre</title>
+  
+
+  
+  <link rel="stylesheet" href="/lustre/_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="/lustre/_static/pygments.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+    <link rel="canonical" href="/lustre/config.html" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="/lustre/_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="/lustre/_static/documentation_options.js"></script>
+        <script src="/lustre/_static/jquery.js"></script>
+        <script src="/lustre/_static/underscore.js"></script>
+        <script src="/lustre/_static/doctools.js"></script>
+        <script src="/lustre/_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="/lustre/_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Message" href="message.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html">
+          
+
+          
+            
+            <img src="/lustre/_static/Lustre.svg" class="logo" alt="Logo"/>
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="ws.html">WebSocket</a></li>
+<li class="toctree-l1"><a class="reference internal" href="message.html">Message</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Config</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Python</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>Config</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/config.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="config">
+<h1>Config<a class="headerlink" href="#config" title="Permalink to this headline">¶</a></h1>
+<dl class="lua class">
+<dt id="Config">
+<em class="property">class </em><code class="sig-name descname">Config</code><a class="headerlink" href="#Config" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="lua attribute">
+<dt id="Config._max_queue_size">
+<code class="sig-name descname">_max_queue_size</code><em class="property">: </em>number or nil<a class="headerlink" href="#Config._max_queue_size" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="lua attribute">
+<dt id="Config._max_frame_size">
+<code class="sig-name descname">_max_frame_size</code><em class="property">: </em>number<a class="headerlink" href="#Config._max_frame_size" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="lua attribute">
+<dt id="Config._max_message_size">
+<code class="sig-name descname">_max_message_size</code><em class="property">: </em>number<a class="headerlink" href="#Config._max_message_size" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="lua attribute">
+<dt id="Config._accept_unmasked_frames">
+<code class="sig-name descname">_accept_unmasked_frames</code><em class="property">: </em>boolean<a class="headerlink" href="#Config._accept_unmasked_frames" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="lua attribute">
+<dt id="Config.extensions">
+<code class="sig-name descname">extensions</code><em class="property">: </em>list[table]<a class="headerlink" href="#Config.extensions" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="lua attribute">
+<dt id="Config.protocols">
+<code class="sig-name descname">protocols</code><em class="property">: </em>list[str]<a class="headerlink" href="#Config.protocols" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="lua attribute">
+<dt id="Config._keep_alive">
+<code class="sig-name descname">_keep_alive</code><em class="property">: </em>number or nil<a class="headerlink" href="#Config._keep_alive" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="lua staticmethod">
+<dt id="Config.default">
+<em class="property">static </em><code class="sig-name descname">default</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#Config.default" title="Permalink to this definition">¶</a></dt>
+<dd><p>Construct a default configurations</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#Config" title="Config">Config</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="lua method">
+<dt id="Config.max_queue_size">
+<em class="property"> </em><code class="sig-name descname">max_queue_size</code><span class="sig-paren">(</span><em class="sig-param">size</em><span class="sig-paren">)</span><a class="headerlink" href="#Config.max_queue_size" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the max message queue size</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>size</strong> (<em>number or nil</em>) – </p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference internal" href="#Config" title="Config">Config</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="lua method">
+<dt id="Config.max_message_size">
+<em class="property"> </em><code class="sig-name descname">max_message_size</code><span class="sig-paren">(</span><em class="sig-param">size</em><span class="sig-paren">)</span><a class="headerlink" href="#Config.max_message_size" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the max message size (Default 64mb)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>size</strong> (<em>number or nil</em>) – </p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference internal" href="#Config" title="Config">Config</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="lua method">
+<dt id="Config.max_frame_size">
+<em class="property"> </em><code class="sig-name descname">max_frame_size</code><span class="sig-paren">(</span><em class="sig-param">size</em><span class="sig-paren">)</span><a class="headerlink" href="#Config.max_frame_size" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the max frame size (Default 16mb)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>size</strong> (<em>number or nil</em>) – </p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference internal" href="#Config" title="Config">Config</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="lua method">
+<dt id="Config.max_frames_without_pong">
+<em class="property"> </em><code class="sig-name descname">max_frames_without_pong</code><span class="sig-paren">(</span><em class="sig-param">size</em><span class="sig-paren">)</span><a class="headerlink" href="#Config.max_frames_without_pong" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the max frames that can be received while waiting for a pong (Default 4)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>size</strong> (<em>number or nil</em>) – </p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference internal" href="#Config" title="Config">Config</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="lua method">
+<dt id="Config.extension">
+<em class="property"> </em><code class="sig-name descname">extension</code><span class="sig-paren">(</span><em class="sig-param">name</em>, <em class="sig-param">params</em><span class="sig-paren">)</span><a class="headerlink" href="#Config.extension" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add an entry to the enabled extensions</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<em>str</em>) – </p></li>
+<li><p><strong>params</strong> (<em>list[str]</em>) – </p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference internal" href="#Config" title="Config">Config</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="lua method">
+<dt id="Config.protocol">
+<em class="property"> </em><code class="sig-name descname">protocol</code><span class="sig-paren">(</span><em class="sig-param">name</em><span class="sig-paren">)</span><a class="headerlink" href="#Config.protocol" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add an entry to the enabled protocols</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>name</strong> (<em>str</em>) – </p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference internal" href="#Config" title="Config">Config</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="lua method">
+<dt id="Config.keep_alive">
+<em class="property"> </em><code class="sig-name descname">keep_alive</code><span class="sig-paren">(</span><em class="sig-param">timeout</em><span class="sig-paren">)</span><a class="headerlink" href="#Config.keep_alive" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the keep alive value in number of seconds. This will control</p>
+<p>how often an idle websocket will send a “ping” frame</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>timeout</strong> (<em>any</em>) – </p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference internal" href="#Config" title="Config">Config</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="message.html" class="btn btn-neutral float-left" title="Message" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright .
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

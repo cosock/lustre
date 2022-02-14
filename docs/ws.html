@@ -1,0 +1,494 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>WebSocket &mdash; Lustre</title>
+  
+
+  
+  <link rel="stylesheet" href="/lustre/_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="/lustre/_static/pygments.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+    <link rel="canonical" href="/lustre/ws.html" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="/lustre/_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="/lustre/_static/documentation_options.js"></script>
+        <script src="/lustre/_static/jquery.js"></script>
+        <script src="/lustre/_static/underscore.js"></script>
+        <script src="/lustre/_static/doctools.js"></script>
+        <script src="/lustre/_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="/lustre/_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Message" href="message.html" />
+    <link rel="prev" title="Lustre" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html">
+          
+
+          
+            
+            <img src="/lustre/_static/Lustre.svg" class="logo" alt="Logo"/>
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">WebSocket</a></li>
+<li class="toctree-l1"><a class="reference internal" href="message.html">Message</a></li>
+<li class="toctree-l1"><a class="reference internal" href="config.html">Config</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Python</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>WebSocket</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/ws.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="websocket">
+<h1>WebSocket<a class="headerlink" href="#websocket" title="Permalink to this headline">¶</a></h1>
+<dl class="lua class">
+<dt id="WebSocket">
+<em class="property">class </em><code class="sig-name descname">WebSocket</code><a class="headerlink" href="#WebSocket" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="lua attribute">
+<dt id="WebSocket.id">
+<code class="sig-name descname">id</code><em class="property">: </em>number or str<a class="headerlink" href="#WebSocket.id" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="lua attribute">
+<dt id="WebSocket.url">
+<code class="sig-name descname">url</code><em class="property">: </em>str<a class="headerlink" href="#WebSocket.url" title="Permalink to this definition">¶</a></dt>
+<dd><p>the endpoint to hit</p>
+</dd></dl>
+
+<dl class="lua attribute">
+<dt id="WebSocket.socket">
+<code class="sig-name descname">socket</code><em class="property">: </em>table<a class="headerlink" href="#WebSocket.socket" title="Permalink to this definition">¶</a></dt>
+<dd><p>lua socket</p>
+</dd></dl>
+
+<dl class="lua attribute">
+<dt id="WebSocket.handshake_key">
+<code class="sig-name descname">handshake_key</code><em class="property">: </em>str<a class="headerlink" href="#WebSocket.handshake_key" title="Permalink to this definition">¶</a></dt>
+<dd><p>key used in the websocket handshake</p>
+</dd></dl>
+
+<dl class="lua attribute">
+<dt id="WebSocket.config">
+<code class="sig-name descname">config</code><em class="property">: </em>Config<a class="headerlink" href="#WebSocket.config" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="lua attribute">
+<dt id="WebSocket.handshake">
+<code class="sig-name descname">handshake</code><em class="property">: </em>Handshake<a class="headerlink" href="#WebSocket.handshake" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="lua attribute">
+<dt id="WebSocket._send_tx">
+<code class="sig-name descname">_send_tx</code><em class="property">: </em>table<a class="headerlink" href="#WebSocket._send_tx" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="lua attribute">
+<dt id="WebSocket._send_rx">
+<code class="sig-name descname">_send_rx</code><em class="property">: </em>table<a class="headerlink" href="#WebSocket._send_rx" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="lua attribute">
+<dt id="WebSocket._recv_tx">
+<code class="sig-name descname">_recv_tx</code><em class="property">: </em>table<a class="headerlink" href="#WebSocket._recv_tx" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="lua attribute">
+<dt id="WebSocket._recv_rx">
+<code class="sig-name descname">_recv_rx</code><em class="property">: </em>table<a class="headerlink" href="#WebSocket._recv_rx" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="lua attribute">
+<dt id="WebSocket.is_client">
+<code class="sig-name descname">is_client</code><em class="property">: </em>boolean<a class="headerlink" href="#WebSocket.is_client" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="lua staticmethod">
+<dt id="WebSocket.client">
+<em class="property">static </em><code class="sig-name descname">client</code><span class="sig-paren">(</span><em class="sig-param">socket</em>, <em class="sig-param">url</em>, <em class="sig-param">config</em><span class="sig-paren">)</span><a class="headerlink" href="#WebSocket.client" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create new client object</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>socket</strong> (<em>table</em>) – connected tcp socket</p></li>
+<li><p><strong>url</strong> (<em>str</em>) – url to connect</p></li>
+<li><p><strong>config</strong> (<a class="reference internal" href="config.html#Config" title="Config"><em>Config</em></a>) – </p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference internal" href="#WebSocket" title="WebSocket">WebSocket</a></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>str or nil</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="lua staticmethod">
+<dt id="WebSocket.server">
+<em class="property">static </em><code class="sig-name descname">server</code><span class="sig-paren">(</span><em class="sig-param">socket</em>, <em class="sig-param">config</em><span class="sig-paren">)</span><a class="headerlink" href="#WebSocket.server" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a server side websocket (NOT YET IMPLEMENTED)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>socket</strong> (<em>table</em>) – the cosock.tcp socket to use</p></li>
+<li><p><strong>config</strong> (<a class="reference internal" href="config.html#Config" title="Config"><em>Config</em></a>) – The websocket configuration</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference internal" href="#WebSocket" title="WebSocket">WebSocket</a></p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>If an error occurs, returns the error message</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>str or nil</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="lua method">
+<dt id="WebSocket.receive">
+<em class="property"> </em><code class="sig-name descname">receive</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#WebSocket.receive" title="Permalink to this definition">¶</a></dt>
+<dd><p>Receive the next message from this websocket</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference internal" href="message.html#Message" title="Message">Message</a></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>str or nil</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="lua method">
+<dt id="WebSocket.send_text">
+<em class="property"> </em><code class="sig-name descname">send_text</code><span class="sig-paren">(</span><em class="sig-param">text</em><span class="sig-paren">)</span><a class="headerlink" href="#WebSocket.send_text" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>text</strong> (<em>str</em>) – </p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>number or str or nil</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="lua method">
+<dt id="WebSocket.send_bytes">
+<em class="property"> </em><code class="sig-name descname">send_bytes</code><span class="sig-paren">(</span><em class="sig-param">bytes</em><span class="sig-paren">)</span><a class="headerlink" href="#WebSocket.send_bytes" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>bytes</strong> (<em>str</em>) – </p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>number</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>number or str or nil</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="lua method">
+<dt id="WebSocket.send">
+<em class="property"> </em><code class="sig-name descname">send</code><span class="sig-paren">(</span><em class="sig-param">message</em><span class="sig-paren">)</span><a class="headerlink" href="#WebSocket.send" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>message</strong> (<a class="reference internal" href="message.html#Message" title="Message"><em>Message</em></a>) – </p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>number or str or nil</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="lua method">
+<dt id="WebSocket.connect">
+<em class="property"> </em><code class="sig-name descname">connect</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#WebSocket.connect" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>number or str or nil</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="lua method">
+<dt id="WebSocket.accept">
+<em class="property"> </em><code class="sig-name descname">accept</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#WebSocket.accept" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="lua method">
+<dt id="WebSocket.close">
+<em class="property"> </em><code class="sig-name descname">close</code><span class="sig-paren">(</span><em class="sig-param">close_code</em>, <em class="sig-param">reason</em><span class="sig-paren">)</span><a class="headerlink" href="#WebSocket.close" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>close_code</strong> (<em>CloseCode</em>) – </p></li>
+<li><p><strong>reason</strong> (<em>str</em>) – </p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>1 if success</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>number</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>str or nil</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="lua method">
+<dt id="WebSocket.setwaker">
+<em class="property"> </em><code class="sig-name descname">setwaker</code><span class="sig-paren">(</span><em class="sig-param">kind</em>, <em class="sig-param">waker</em><span class="sig-paren">)</span><a class="headerlink" href="#WebSocket.setwaker" title="Permalink to this definition">¶</a></dt>
+<dd><p>Cosock internal interface for using <cite>cosock.socket.select</cite></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>kind</strong> (<em>str</em>) – </p></li>
+<li><p><strong>waker</strong> (<em>fun()</em>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="lua method">
+<dt id="WebSocket._handle_recvs">
+<em class="property"> </em><code class="sig-name descname">_handle_recvs</code><span class="sig-paren">(</span><em class="sig-param">state</em>, <em class="sig-param">recv</em>, <em class="sig-param">idx</em><span class="sig-paren">)</span><a class="headerlink" href="#WebSocket._handle_recvs" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>state</strong> (<em>any</em>) – </p></li>
+<li><p><strong>recv</strong> (<em>any</em>) – </p></li>
+<li><p><strong>idx</strong> (<em>any</em>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="lua method">
+<dt id="WebSocket._handle_select_err">
+<em class="property"> </em><code class="sig-name descname">_handle_select_err</code><span class="sig-paren">(</span><em class="sig-param">state</em>, <em class="sig-param">err</em><span class="sig-paren">)</span><a class="headerlink" href="#WebSocket._handle_select_err" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>state</strong> (<em>any</em>) – </p></li>
+<li><p><strong>err</strong> (<em>any</em>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="lua method">
+<dt id="WebSocket._handle_recv_ready">
+<em class="property"> </em><code class="sig-name descname">_handle_recv_ready</code><span class="sig-paren">(</span><em class="sig-param">state</em><span class="sig-paren">)</span><a class="headerlink" href="#WebSocket._handle_recv_ready" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>state</strong> (<em>any</em>) – </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="lua method">
+<dt id="WebSocket._handle_recv_control_frame">
+<em class="property"> </em><code class="sig-name descname">_handle_recv_control_frame</code><span class="sig-paren">(</span><em class="sig-param">frame</em>, <em class="sig-param">state</em><span class="sig-paren">)</span><a class="headerlink" href="#WebSocket._handle_recv_control_frame" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>frame</strong> (<em>any</em>) – </p></li>
+<li><p><strong>state</strong> (<em>any</em>) – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="lua method">
+<dt id="WebSocket._handle_send_ready">
+<em class="property"> </em><code class="sig-name descname">_handle_send_ready</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#WebSocket._handle_send_ready" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="lua method">
+<dt id="WebSocket._handle_sent_close_frame">
+<em class="property"> </em><code class="sig-name descname">_handle_sent_close_frame</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#WebSocket._handle_sent_close_frame" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="lua method">
+<dt id="WebSocket._handle_recvd_close_frame">
+<em class="property"> </em><code class="sig-name descname">_handle_recvd_close_frame</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#WebSocket._handle_recvd_close_frame" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="message.html" class="btn btn-neutral float-right" title="Message" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="index.html" class="btn btn-neutral float-left" title="Lustre" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright .
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

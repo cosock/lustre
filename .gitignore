@@ -1,4 +1,14 @@
 /luarocks
 /lua
-/lua_modules
+
 /.luarocks
+*.out
+*.log
+/lua_modules
+.vsls.json
+/spec/reports
+/utf8
+Dockerfile
+.dockerignore
+run_test.sh
+tmp

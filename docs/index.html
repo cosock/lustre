@@ -1,0 +1,244 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>Lustre &mdash; Lustre</title>
+  
+
+  
+  <link rel="stylesheet" href="/lustre/_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="/lustre/_static/pygments.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+    <link rel="canonical" href="/lustre/index.html" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="/lustre/_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="/lustre/_static/documentation_options.js"></script>
+        <script src="/lustre/_static/jquery.js"></script>
+        <script src="/lustre/_static/underscore.js"></script>
+        <script src="/lustre/_static/doctools.js"></script>
+        <script src="/lustre/_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="/lustre/_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="WebSocket" href="ws.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="#">
+          
+
+          
+            
+            <img src="/lustre/_static/Lustre.svg" class="logo" alt="Logo"/>
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="ws.html">WebSocket</a></li>
+<li class="toctree-l1"><a class="reference internal" href="message.html">Message</a></li>
+<li class="toctree-l1"><a class="reference internal" href="config.html">Config</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">Python</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="#" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>Lustre</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="toctree-wrapper compound">
+</div>
+<div class="section" id="lustre">
+<h1>Lustre<a class="headerlink" href="#lustre" title="Permalink to this headline">¶</a></h1>
+<p>WebSockets for Lua</p>
+<a class="reference external image-reference" href="/Lustre.svg"><img alt="Gilded plaque" src="_images/Lustre.svg" /></a>
+<div class="section" id="usage">
+<h2>Usage<a class="headerlink" href="#usage" title="Permalink to this headline">¶</a></h2>
+<p>Lustre’s goal is to provide a high level websocket facade that can be used by any framework that
+depends on <a class="reference external" href="https://github.com/FreeMasen/luncheon">luncheon</a>‘s HTTP types and
+<a class="reference external" href="https://github.com/cosock/cosock">Cosock</a> for coroutine execution.</p>
+<div class="highlight-lua notranslate"><div class="highlight"><pre><span></span><span class="c1">--This websocket client will echo all received message</span>
+<span class="c1">--back to the server</span>
+<span class="kd">local</span> <span class="n">lustre</span> <span class="o">=</span> <span class="nb">require</span> <span class="s2">&quot;lustre&quot;</span>
+<span class="kd">local</span> <span class="n">cosock</span> <span class="o">=</span> <span class="nb">require</span> <span class="s2">&quot;cosock&quot;</span>
+
+<span class="kd">local</span> <span class="n">ws</span> <span class="o">=</span> <span class="n">lustre</span><span class="p">.</span><span class="n">Websocket</span><span class="p">.</span><span class="n">client</span><span class="p">(</span><span class="nb">assert</span><span class="p">(</span><span class="n">cosock</span><span class="p">.</span><span class="n">socket</span><span class="p">.</span><span class="n">tcp</span><span class="p">()),</span> <span class="s2">&quot;/sse&quot;</span><span class="p">,</span> <span class="n">lustre</span><span class="p">.</span><span class="n">Config</span><span class="p">.</span><span class="n">default</span><span class="p">())</span>
+<span class="nb">assert</span><span class="p">(</span><span class="n">ws</span><span class="p">:</span><span class="n">connect</span><span class="p">(</span><span class="s1">&#39;0.0.0.0&#39;</span><span class="p">,</span> <span class="mi">8080</span><span class="p">))</span>
+<span class="n">cosock</span><span class="p">.</span><span class="n">spawn</span><span class="p">(</span><span class="kr">function</span><span class="p">()</span>
+  <span class="kd">local</span> <span class="n">msg</span><span class="p">,</span> <span class="n">err</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="kc">nil</span>
+  <span class="kr">while</span> <span class="n">msg</span> <span class="kr">do</span>
+    <span class="n">msg</span><span class="p">,</span> <span class="n">err</span> <span class="o">=</span> <span class="n">ws</span><span class="p">:</span><span class="n">receive</span><span class="p">()</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">msg</span><span class="p">.</span><span class="n">type</span><span class="p">,</span> <span class="n">msg</span><span class="p">.</span><span class="n">data</span><span class="p">)</span>
+    <span class="n">ws</span><span class="p">:</span><span class="n">send</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+  <span class="kr">end</span>
+  <span class="kr">if</span> <span class="n">err</span> <span class="o">~=</span> <span class="s2">&quot;closed&quot;</span> <span class="kr">then</span>
+    <span class="nb">error</span><span class="p">(</span><span class="n">err</span><span class="p">)</span>
+  <span class="kr">end</span>
+<span class="kr">end</span><span class="p">,</span> <span class="s2">&quot;websocket recv loop&quot;</span><span class="p">)</span>
+<span class="n">cosock</span><span class="p">.</span><span class="n">run</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="ws.html" class="btn btn-neutral float-right" title="WebSocket" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright .
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
