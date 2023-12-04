@@ -14,6 +14,9 @@ local CloseCode =
   require"lustre.frame.close".CloseCode
 local Message = require"lustre.message"
 local log = require"log"
+-- disable debugging logs
+log.debug = function(...) end
+log.trace = function(...) end
 
 local utils = require"lustre.utils"
 
