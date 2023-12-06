@@ -14,6 +14,9 @@ local CloseCode =
   require"lustre.frame.close".CloseCode
 local Message = require"lustre.message"
 local log = require"log"
+-- disable debugging logs
+log.debug = function(...) end
+log.trace = function(...) end
 
 local utils = require"lustre.utils"
 
@@ -156,6 +159,28 @@ function WebSocket:send(message)
 end
 
 ---@return number, string|nil
+function WebSocket:client_handshake_and_start(host, port)
+  if not self.is_client then -- todo use metatables to enforce this
+    log.error(self.id, "Invalid client websocket")
+    return nil, "only a client can connect"
+  end
+  -- Do handshake
+  log.debug(self.id, "sending handshake")
+  local success, err = self.handshake:send(
+    self.socket, self.url,
+    string.format("%s:%d", host, port))
+  log.debug(self.id, "handshake complete",
+    success or err)
+  if not success then
+    return nil, "invalid handshake: " .. err
+  end
+  cosock.spawn(function()
+    self:_receive_loop()
+  end, "Client receive loop")
+  return 1
+end
+
+---@return number, string|nil
 function WebSocket:connect(host, port)
   log.trace(self.id, "WebSocket:connect", host,
     port)
@@ -174,20 +199,7 @@ function WebSocket:connect(host, port)
     return nil, "socket connect failure: " .. err
   end
 
-  -- Do handshake
-  log.debug(self.id, "sending handshake")
-  local success, err = self.handshake:send(
-    self.socket, self.url,
-    string.format("%s:%d", host, port))
-  log.debug(self.id, "handshake complete",
-    success or err)
-  if not success then
-    return nil, "invalid handshake: " .. err
-  end
-  cosock.spawn(function()
-    self:_receive_loop()
-  end, "Client receive loop")
-  return 1
+  return self:client_handshake_and_start(host, port)
 end
 
 function WebSocket:accept()
@@ -205,6 +217,7 @@ function WebSocket:close(close_code, reason)
     local close_frame = Frame.close(close_code,
       reason):set_mask() -- TODO client vs server
     local tx, reply = cosock.channel.new()
+    reply:settimeout(0.5)
     log.debug("sending frame to socket task")
     local suc, err = self._send_tx:send(
       {frame = close_frame, reply = tx})
@@ -214,7 +227,9 @@ function WebSocket:close(close_code, reason)
       return nil, "channel error:" .. err
     end
     log.debug("waiting on reply")
-    return reply:receive()
+    local reply = reply:receive()
+    log.debug("reply received")
+    return reply
   elseif self.state == "ClosedBySelf" then
     self.state = "CloseAcknowledged"
   end
@@ -274,7 +289,9 @@ function WebSocket:_receive_loop()
   end
   log.debug("Closing socket")
   self.socket:close()
+  log.debug("Closing channel")
   self._send_rx:close()
+  log.debug("Channel closed")
 end
 
 function WebSocket:_handle_recvs(state, recv, idx)
@@ -322,7 +339,7 @@ function WebSocket:_handle_recv_ready(state)
     Frame.from_stream(self.socket)
   log.debug(self.id, "build frame", frame or err)
   if not frame then
-    log.info("error building frame", err)
+    log.debug("error building frame", err)
     if err == "invalid opcode" or err
       == "invalid rsv bit" then
       log.warn(self.id,
@@ -581,10 +598,18 @@ function WebSocket:_handle_send_ready()
     local closed = err:match("close")
     if closed and self.state == "Active" then
       log.debug("closed error", err)
-      reply:send({err = err})
+      if reply and reply.send then
+        reply:send({err = err})
+      else
+        log.error(string.format("No reply channel in event for progating error: %s", err))
+      end
     end
     if not closed then
-      reply:send({err = err})
+      if reply and reply.send then
+        reply:send({err = err})
+      else
+        log.error(string.format("No reply channel in event for progating error: %s", err))
+      end
     end
     return
   end

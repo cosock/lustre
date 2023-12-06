@@ -42,6 +42,11 @@ function Handshake:send(socket, url, host)
   req:add_header("Sec-Websocket-Version", 13)
   req:add_header("Sec-Websocket-Key", self.key)
   req:add_header("Host", host)
+
+  for key, val in pairs(self.extra_headers) do
+    req:add_header(key, val)
+  end
+  
   if next(self.protocols) then
     req:add_header("Sec-Websocket-Protocol",
       table.concat(self.protocols, ","))

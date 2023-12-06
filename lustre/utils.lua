@@ -1,4 +1,5 @@
 local log = require"log"
+log.trace = function(...) end
 
 local U8_AS_I8 = {
   [0] = 0,
@@ -465,7 +466,7 @@ end
 
 local function valid_4_byte_set(one, two, three,
   four)
-  -- (0xF0, 0x90..=0xBF) 
+  -- (0xF0, 0x90..=0xBF)
   if one == 0xF0 then
     return two >= 0x90 and two <= 0xBF
              and trailer_is_in_range(three)
